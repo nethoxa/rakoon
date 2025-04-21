@@ -1,0 +1,11 @@
+[package]
+name = "tx-fuzz"
+version = "0.1.0"
+edition = "2024"
+
+[[bin]]
+name = "tx-fuzz"
+path = "src/main.rs"
+
+[dependencies]
+engine = { workspace = true }

@@ -1,0 +1,6 @@
+[package]
+name = "spammer"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]

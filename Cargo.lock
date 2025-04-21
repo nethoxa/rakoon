@@ -3,5 +3,24 @@
 version = 4
 
 [[package]]
+name = "engine"
+version = "0.1.0"
+
+[[package]]
+name = "mutator"
+version = "0.1.0"
+
+[[package]]
+name = "spammer"
+version = "0.1.0"
+
+[[package]]
 name = "tx-fuzz"
+version = "0.1.0"
+dependencies = [
+ "engine",
+]
+
+[[package]]
+name = "txs"
 version = "0.1.0"

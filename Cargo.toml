@@ -1,6 +1,16 @@
-[package]
-name = "tx-fuzz"
+[workspace.package]
+name = "nethel"
 version = "0.1.0"
 edition = "2024"
+rust-version = "1.85"
 
-[dependencies]
+[workspace]
+members = [
+    "bin", "crates/mutator", "crates/txs", "crates/spammer", "crates/engine"
+]
+
+[workspace.dependencies]
+engine = { path = "crates/engine" }
+mutator = { path = "crates/mutator" }
+txs = { path = "crates/txs" }
+spammer = { path = "crates/spammer" }
