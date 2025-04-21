@@ -1,4 +1,0 @@
-/target
-/tx-fuzz
-Cargo.lock
-.gitignore
