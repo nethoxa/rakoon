@@ -8,25 +8,35 @@ use common::{Backend, SK, STATIC_KEYS};
 use mutator::Mutator;
 
 #[derive(Clone)]
+/// Config is a struct that contains the configuration for the spammer.
 pub struct Config {
+    /// The backend to use for the spammer.
     pub backend: Backend,
-
-    pub n: u64,
+    /// The number of transactions to send.
+    pub tx_number: u64,
+    /// The faucet account.
     pub faucet: SigningKey,
+    /// The keys to send transactions from.
     pub keys: Vec<SigningKey>,
+    /// The corpus to use for the spammer.
     pub corpus: Vec<Vec<u8>>,
+    /// Whether to use access list or not.
     pub access_list: bool,
+    /// The gas limit for the spammer.
     pub gas_limit: u64,
+    /// The slot time for the spammer.
     pub slot_time: u64,
-
+    /// The seed for the mutator.
     pub seed: u64,
+    /// The mutator to use for the spammer.
     pub mutator: Mutator,
 }
 
 impl Config {
+    /// Creates a new `Config` with the default values.
     pub fn default(
         rpc: String,
-        n: u64,
+        tx_number: u64,
         access_list: bool,
         max_operations_per_mutation: u64,
     ) -> Result<Self, SpammerError> {
@@ -44,7 +54,7 @@ impl Config {
 
         Ok(Self {
             backend,
-            n,
+            tx_number,
             faucet,
             keys,
             corpus: Vec::new(),
@@ -60,7 +70,7 @@ impl Config {
         rpc: String,
         sk: String,
         gas_limit: u64,
-        n: u64,
+        tx_number: u64,
         corpus_file: String,
         seed: u64,
         access_list: bool,
@@ -96,10 +106,10 @@ impl Config {
             gas_limit
         };
 
-        let n = if n == 0 {
+        let tx_number: u64 = if tx_number == 0 {
             Self::setup_n(&backend, keys.len() as u64, gas_limit).await.unwrap()
         } else {
-            n
+            tx_number
         };
 
         let corpus = if corpus_file.is_empty() {
@@ -110,7 +120,7 @@ impl Config {
 
         Ok(Self {
             backend,
-            n,
+            tx_number,
             faucet,
             keys,
             corpus,

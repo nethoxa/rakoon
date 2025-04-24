@@ -166,7 +166,7 @@ async fn main() {
                 slot_time
             );
 
-            match engine.run_blob_spam() {
+            match engine.run_blob_spam().await {
                 Ok(_) => println!("[{}] Blob spam completed successfully", "+".bright_green()),
                 Err(e) => println!("[{}] Blob spam failed: {}", "-".bright_red(), e),
             }
@@ -201,7 +201,7 @@ async fn main() {
                 slot_time
             );
 
-            match engine.run_7702_spam() {
+            match engine.run_7702_spam().await {
                 Ok(_) => println!("[{}] Pectra spam completed successfully", "+".bright_green()),
                 Err(e) => println!("[{}] Pectra spam failed: {}", "-".bright_red(), e),
             }

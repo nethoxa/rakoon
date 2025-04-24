@@ -46,5 +46,7 @@ The supported commands are:
     - `--slot-time`: Slot time in seconds
     - `--max-operations-per-mutation`: Maximum number of operations per mutation
 
+## TODO
+- Mix tx types like access list in blobs and shit like that
 ## Benchmarks
 TODO

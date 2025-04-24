@@ -201,12 +201,34 @@ impl Engine {
     }
 
     /// Spam blob transactions
-    pub fn run_blob_spam(&self) -> Result<(), String> {
-        todo!()
+    pub async fn run_blob_spam(&self) -> Result<(), String> {
+        let config = self.setup_config().await.unwrap();
+        let keys = config.keys.clone();
+        let spammer = Spammer::new(config);
+
+        loop {
+            // Each block, restore the balances of the sender accounts
+            self.run_airdrop().await.unwrap();
+            for key in keys.clone() {
+                spammer.send_blob_tx(&key).await.unwrap();
+            }
+            sleep(Duration::from_secs(self.slot_time));
+        }
     }
 
     /// Spam 7702 transactions
-    pub fn run_7702_spam(&self) -> Result<(), String> {
-        todo!()
+    pub async fn run_7702_spam(&self) -> Result<(), String> {
+        let config = self.setup_config().await.unwrap();
+        let keys = config.keys.clone();
+        let spammer = Spammer::new(config);
+
+        loop {
+            // Each block, restore the balances of the sender accounts
+            self.run_airdrop().await.unwrap();
+            for key in keys.clone() {
+                spammer.send_7702_tx(&key).await.unwrap();
+            }
+            sleep(Duration::from_secs(self.slot_time));
+        }
     }
 }
