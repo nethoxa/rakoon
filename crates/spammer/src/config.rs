@@ -8,18 +8,18 @@ use common::{SK, STATIC_KEYS};
 use mutator::Mutator;
 
 pub struct Config {
-    backend: Backend,
+    pub backend: Backend,
 
-    n: u64,
-    faucet: SigningKey,
-    keys: Vec<SigningKey>,
-    corpus: Vec<Vec<u8>>,
-    access_list: bool,
-    gas_limit: u64,
-    slot_time: u64,
+    pub n: u64,
+    pub faucet: SigningKey,
+    pub keys: Vec<SigningKey>,
+    pub corpus: Vec<Vec<u8>>,
+    pub access_list: bool,
+    pub gas_limit: u64,
+    pub slot_time: u64,
 
-    seed: u64,
-    mutator: Mutator,
+    pub seed: u64,
+    pub mutator: Mutator,
 }
 
 impl Config {
