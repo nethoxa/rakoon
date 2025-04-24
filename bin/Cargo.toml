@@ -5,7 +5,9 @@ edition = "2024"
 
 [[bin]]
 name = "tx-fuzz"
-path = "src/main.rs"
+path = "cli/main.rs"
 
 [dependencies]
 engine = { workspace = true }
+clap = { workspace = true }
+colored = { workspace = true }

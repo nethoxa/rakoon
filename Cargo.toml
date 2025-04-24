@@ -1,5 +1,5 @@
 [workspace.package]
-name = "nethel"
+name = "tx-fuzz"
 version = "0.1.0"
 edition = "2024"
 rust-version = "1.85"
@@ -8,9 +8,12 @@ rust-version = "1.85"
 members = [
     "bin", "crates/mutator", "crates/txs", "crates/spammer", "crates/engine"
 ]
+resolver = "3"
 
 [workspace.dependencies]
 engine = { path = "crates/engine" }
 mutator = { path = "crates/mutator" }
 txs = { path = "crates/txs" }
 spammer = { path = "crates/spammer" }
+clap = { version = "4.5.37", features = ["derive"] }
+colored = "3.0.0"
