@@ -1,10 +1,10 @@
-use crate::{errors::SpammerError, types::Backend};
+use crate::errors::SpammerError;
 use alloy::{
     eips::eip1898::BlockNumberOrTag,
     providers::{Provider, ProviderBuilder},
     signers::{k256::ecdsa::SigningKey, local::PrivateKeySigner},
 };
-use common::{SK, STATIC_KEYS};
+use common::{SK, STATIC_KEYS, Backend};
 use mutator::Mutator;
 
 #[derive(Clone)]
@@ -28,7 +28,7 @@ impl Config {
         rpc: String,
         n: u64,
         access_list: bool,
-        max_operations_per_mutation: usize,
+        max_operations_per_mutation: u64,
     ) -> Result<Self, SpammerError> {
         let faucet = SigningKey::from_bytes(SK.as_bytes().into()).unwrap();
         let rpc_url = rpc.parse().unwrap();
@@ -64,7 +64,7 @@ impl Config {
         corpus_file: String,
         seed: u64,
         access_list: bool,
-        max_operations_per_mutation: usize,
+        max_operations_per_mutation: u64,
     ) -> Result<Self, SpammerError> {
         let faucet = SigningKey::from_bytes(SK.as_bytes().into()).unwrap();
         let rpc_url = rpc.parse().unwrap();

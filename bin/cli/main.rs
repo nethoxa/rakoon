@@ -37,6 +37,8 @@ enum Commands {
         gas_limit: u64,
         #[arg(long, help = "Slot time in seconds")]
         slot_time: u64,
+        #[arg(long, help = "Maximum number of operations per mutation")]
+        max_operations_per_mutation: u64,
     },
     #[command(about = "Sends blob spam transactions")]
     Blobs {
@@ -56,6 +58,8 @@ enum Commands {
         gas_limit: u64,
         #[arg(long, help = "Slot time in seconds")]
         slot_time: u64,
+        #[arg(long, help = "Maximum number of operations per mutation")]
+        max_operations_per_mutation: u64,
     },
     #[command(about = "Sends 7702 spam transactions")]
     Pectra {
@@ -75,12 +79,14 @@ enum Commands {
         gas_limit: u64,
         #[arg(long, help = "Slot time in seconds")]
         slot_time: u64,
+        #[arg(long, help = "Maximum number of operations per mutation")]
+        max_operations_per_mutation: u64,
     },
 }
 
 #[tokio::main]
 async fn main() {
-    let mut engine = Engine::new();
+    let mut engine = Engine::default();
     let cli = Cli::parse();
 
     match cli.command {
@@ -109,6 +115,7 @@ async fn main() {
             tx_count,
             gas_limit,
             slot_time,
+            max_operations_per_mutation,
         } => {
             engine.set_sk(sk.clone());
             engine.set_rpc(rpc.clone());
@@ -118,6 +125,7 @@ async fn main() {
             engine.set_tx_count(tx_count);
             engine.set_gas_limit(gas_limit);
             engine.set_slot_time(slot_time);
+            engine.set_max_operations_per_mutation(max_operations_per_mutation);
 
             println!(
                 "[{}] Running spam with sk: {}, rpc: {}, tx_count: {}, slot_time: {}",
@@ -142,6 +150,7 @@ async fn main() {
             tx_count,
             gas_limit,
             slot_time,
+            max_operations_per_mutation,
         } => {
             engine.set_sk(sk.clone());
             engine.set_rpc(rpc.clone());
@@ -151,6 +160,7 @@ async fn main() {
             engine.set_tx_count(tx_count);
             engine.set_gas_limit(gas_limit);
             engine.set_slot_time(slot_time);
+            engine.set_max_operations_per_mutation(max_operations_per_mutation);
 
             println!(
                 "[{}] Running blob spam with sk: {}, rpc: {}, tx_count: {}, slot_time: {}",
@@ -175,6 +185,7 @@ async fn main() {
             tx_count,
             gas_limit,
             slot_time,
+            max_operations_per_mutation,
         } => {
             engine.set_sk(sk.clone());
             engine.set_rpc(rpc.clone());
@@ -184,6 +195,7 @@ async fn main() {
             engine.set_tx_count(tx_count);
             engine.set_gas_limit(gas_limit);
             engine.set_slot_time(slot_time);
+            engine.set_max_operations_per_mutation(max_operations_per_mutation);
 
             println!(
                 "[{}] Running pectra spam with sk: {}, rpc: {}, tx_count: {}, slot_time: {}",

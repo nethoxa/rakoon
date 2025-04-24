@@ -1236,6 +1236,9 @@ dependencies = [
 [[package]]
 name = "common"
 version = "0.1.0"
+dependencies = [
+ "alloy",
+]
 
 [[package]]
 name = "const-hex"
@@ -1561,6 +1564,7 @@ name = "engine"
 version = "0.1.0"
 dependencies = [
  "alloy",
+ "common",
  "spammer",
 ]
 

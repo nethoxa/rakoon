@@ -1,6 +1,5 @@
 pub mod config;
 pub mod errors;
-pub mod types;
 
 use std::thread::sleep;
 use std::time::Duration;

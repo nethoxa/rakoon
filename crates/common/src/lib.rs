@@ -106,3 +106,25 @@ pub const SK: &str = "0xcdfbe6f7602f67a97602e3e9fc24cde1cdffa88acd47745c0b84c5ff
 pub const ADDR: &str = "0xb02A2EdA1b317FBd16760128836B0Ac59B560e9D";
 
 pub const SK2: &str = "0x8c04e41e317a7cf0cf4c2f7431d0a890a950f352df41ff6d053698df61a73bba";
+
+pub type Backend = alloy::providers::fillers::FillProvider<
+    alloy::providers::fillers::JoinFill<
+        alloy::providers::fillers::JoinFill<
+            alloy::providers::Identity,
+            alloy::providers::fillers::JoinFill<
+                alloy::providers::fillers::GasFiller,
+                alloy::providers::fillers::JoinFill<
+                    alloy::providers::fillers::BlobGasFiller,
+                    alloy::providers::fillers::JoinFill<
+                        alloy::providers::fillers::NonceFiller,
+                        alloy::providers::fillers::ChainIdFiller,
+                    >,
+                >,
+            >,
+        >,
+        alloy::providers::fillers::WalletFiller<alloy::network::EthereumWallet>,
+    >,
+    alloy::providers::RootProvider,
+>;
+
+pub type PendingTransaction = alloy::providers::PendingTransactionBuilder<alloy::network::Ethereum>;

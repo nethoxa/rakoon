@@ -7,12 +7,12 @@ use operations::*;
 #[derive(Clone)]
 pub struct Mutator {
     operations: Vec<fn(&mut [u8], &mut StdRng)>,
-    max_operations_per_mutation: usize,
+    max_operations_per_mutation: u64,
     seed: u64,
 }
 
 impl Mutator {
-    pub fn new(max_operations_per_mutation: usize, seed: u64) -> Self {
+    pub fn new(max_operations_per_mutation: u64, seed: u64) -> Self {
         Self {
             operations: vec![
                 flip_bit,
