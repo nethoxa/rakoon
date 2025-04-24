@@ -1,13 +1,14 @@
 pub mod config;
 pub mod errors;
 
-use std::thread::sleep;
-use std::time::Duration;
+use std::{thread::sleep, time::Duration};
 
-use alloy::consensus::{SignableTransaction, TxLegacy};
-use alloy::primitives::{Address, TxKind, U256};
-use alloy::signers::Signature;
-use alloy::{providers::Provider, signers::k256::ecdsa::SigningKey};
+use alloy::{
+    consensus::{SignableTransaction, TxLegacy},
+    primitives::{Address, TxKind, U256},
+    providers::Provider,
+    signers::{Signature, k256::ecdsa::SigningKey},
+};
 use rand::{Rng, RngCore};
 
 use crate::{config::Config, errors::SpammerError};

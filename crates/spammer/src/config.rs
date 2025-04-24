@@ -4,7 +4,7 @@ use alloy::{
     providers::{Provider, ProviderBuilder},
     signers::{k256::ecdsa::SigningKey, local::PrivateKeySigner},
 };
-use common::{SK, STATIC_KEYS, Backend};
+use common::{Backend, SK, STATIC_KEYS};
 use mutator::Mutator;
 
 #[derive(Clone)]
@@ -97,9 +97,7 @@ impl Config {
         };
 
         let n = if n == 0 {
-            Self::setup_n(&backend, keys.len() as u64, gas_limit)
-                .await
-                .unwrap()
+            Self::setup_n(&backend, keys.len() as u64, gas_limit).await.unwrap()
         } else {
             n
         };
@@ -125,12 +123,8 @@ impl Config {
     }
 
     async fn setup_n(backend: &Backend, keys: u64, gas_limit: u64) -> Result<u64, SpammerError> {
-        let header = backend
-            .get_block_by_number(BlockNumberOrTag::Latest)
-            .await
-            .unwrap()
-            .unwrap()
-            .header;
+        let header =
+            backend.get_block_by_number(BlockNumberOrTag::Latest).await.unwrap().unwrap().header;
         let tx_per_block = header.gas_limit / gas_limit;
         let tx_per_account = tx_per_block / keys;
         if tx_per_account == 0 {

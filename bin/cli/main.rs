@@ -94,12 +94,7 @@ async fn main() {
             engine.set_sk(sk.clone());
             engine.set_rpc(rpc.clone());
 
-            println!(
-                "[{}] Running airdrop with sk: {}, rpc: {}",
-                "+".bright_green(),
-                sk,
-                rpc
-            );
+            println!("[{}] Running airdrop with sk: {}, rpc: {}", "+".bright_green(), sk, rpc);
 
             match engine.run_airdrop().await {
                 Ok(_) => println!("[{}] Airdrop completed successfully", "+".bright_green()),
@@ -207,10 +202,7 @@ async fn main() {
             );
 
             match engine.run_7702_spam() {
-                Ok(_) => println!(
-                    "[{}] Pectra spam completed successfully",
-                    "+".bright_green()
-                ),
+                Ok(_) => println!("[{}] Pectra spam completed successfully", "+".bright_green()),
                 Err(e) => println!("[{}] Pectra spam failed: {}", "-".bright_red(), e),
             }
         }

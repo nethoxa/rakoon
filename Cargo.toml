@@ -6,14 +6,13 @@ rust-version = "1.85"
 
 [workspace]
 members = [
-    "bin", "crates/mutator", "crates/txs", "crates/spammer", "crates/engine"
-, "crates/common"]
+    "bin", "crates/mutator", "crates/spammer", "crates/engine", "crates/common"
+]
 resolver = "3"
 
 [workspace.dependencies]
 engine = { path = "crates/engine" }
 mutator = { path = "crates/mutator" }
-txs = { path = "crates/txs" }
 spammer = { path = "crates/spammer" }
 common = { path = "crates/common" }
 

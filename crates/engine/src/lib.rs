@@ -3,8 +3,8 @@ use alloy::{
     providers::Provider,
     rpc::types::TransactionRequest,
 };
-use spammer::{Spammer, config::Config, errors::SpammerError};
 use common::PendingTransaction;
+use spammer::{Spammer, config::Config, errors::SpammerError};
 use std::{collections::HashMap, thread::sleep, time::Duration};
 
 /// Engine is the main struct that holds the state of the engine
@@ -98,7 +98,8 @@ impl Engine {
         self.max_operations_per_mutation = max_operations_per_mutation;
     }
 
-    /// Setup the config for the spammer. Depending on the values of the engine, it will either create a new config or use the default one.
+    /// Setup the config for the spammer. Depending on the values of the engine, it will either
+    /// create a new config or use the default one.
     async fn setup_config(&self) -> Result<Config, SpammerError> {
         if self.sk.is_empty() || self.gas_limit == 0 || self.corpus.is_empty() || self.seed == 0 {
             Config::default(
@@ -131,22 +132,21 @@ impl Engine {
         for key in config.keys {
             let address = Address::from_public_key(key.verifying_key());
 
-            // Automatically signs the transaction with the signing key specified when creating the `ProviderBuilder` in `setup_config`
-            let tx = TransactionRequest::default()
-                .to(address)
-                .value(U256::from(self.airdrop_value));
+            // Automatically signs the transaction with the signing key specified when creating the
+            // `ProviderBuilder` in `setup_config`
+            let tx =
+                TransactionRequest::default().to(address).value(U256::from(self.airdrop_value));
 
             // Store the balance before the airdrop
             balances_before.insert(address, config.backend.get_balance(address).await.unwrap());
 
             // Send the transaction
-            let pending: PendingTransaction =
-                config
-                    .backend
-                    .send_transaction(tx)
-                    .await
-                    .map_err(|e| SpammerError::ProviderError(e.to_string()))
-                    .unwrap();
+            let pending: PendingTransaction = config
+                .backend
+                .send_transaction(tx)
+                .await
+                .map_err(|e| SpammerError::ProviderError(e.to_string()))
+                .unwrap();
 
             // Add the pending transaction to the list
             pending_txs.push(pending);
@@ -162,11 +162,11 @@ impl Engine {
 
             let address = receipt.to.unwrap();
             let balance_before = balances_before[&address];
-            
+
             if receipt.status() {
                 println!("Airdrop to {} sent successfully", address);
                 let balance_after = config.backend.get_balance(address).await.unwrap();
-                
+
                 // Sanity check to make sure the balance is correct before and after the airdrop
                 if balance_after - balance_before != U256::from(self.airdrop_value) {
                     println!(
@@ -184,28 +184,29 @@ impl Engine {
         Ok(())
     }
 
+    /// Spam legacy transactions
     pub async fn run_spam(&self) -> Result<(), String> {
+        let config = self.setup_config().await.unwrap();
+        let keys = config.keys.clone();
+        let spammer = Spammer::new(config);
+
         loop {
+            // Each block, restore the balances of the sender accounts
             self.run_airdrop().await.unwrap();
-            let config = self.setup_config().await.unwrap();
-            let keys = config.keys.clone();
-            let spammer = Spammer::new(config);
-            for key in keys {
+            for key in keys.clone() {
                 spammer.send_legacy_txs(&key).await.unwrap();
             }
             sleep(Duration::from_secs(self.slot_time));
         }
     }
 
+    /// Spam blob transactions
     pub fn run_blob_spam(&self) -> Result<(), String> {
         todo!()
     }
 
+    /// Spam 7702 transactions
     pub fn run_7702_spam(&self) -> Result<(), String> {
-        todo!()
-    }
-
-    pub fn run_create(&self) -> Result<(), String> {
         todo!()
     }
 }

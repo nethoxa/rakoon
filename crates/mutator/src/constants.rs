@@ -1,5 +1,5 @@
-// https://github.com/AFLplusplus/AFLplusplus/blob/stable/include/config.h#L359
-
+/// Interesting values for the mutator. Taken from:
+/// - https://github.com/AFLplusplus/AFLplusplus/blob/stable/include/config.h#L359
 pub const INTERESTING_8: [u8; 29] = [
     0,   // 00000000
     1,   // 00000001
