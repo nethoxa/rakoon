@@ -14,66 +14,66 @@ struct Cli {
 enum Commands {
     #[command(about = "Sends some ETH to a pre-set list of accounts")]
     Airdrop {
-        #[arg(short, long, help = "Private key of the account to send ETH from")]
+        #[arg(long, help = "Private key of the account to send ETH from")]
         sk: String,
-        #[arg(short, long, help = "RPC endpoint to connect to")]
+        #[arg(long, help = "RPC endpoint to connect to")]
         rpc: String,
     },
     #[command(about = "Sends spam transactions")]
     Spam {
-        #[arg(short, long, help = "Private key of the account to send spam from")]
+        #[arg(long, help = "Private key of the account to send spam from")]
         sk: String,
-        #[arg(short, long, help = "Seed for the random number generator")]
+        #[arg(long, help = "Seed for the random number generator")]
         seed: u64,
-        #[arg(short, long, help = "Whether to use access list or not")]
+        #[arg(long, help = "Whether to use access list or not")]
         no_al: bool,
-        #[arg(short, long, help = "Path to the corpus file")]
+        #[arg(long, help = "Path to the corpus file")]
         corpus: String,
-        #[arg(short, long, help = "RPC endpoint to connect to")]
+        #[arg(long, help = "RPC endpoint to connect to")]
         rpc: String,
-        #[arg(short, long, help = "Number of transactions to send")]
+        #[arg(long, help = "Number of transactions to send")]
         tx_count: u64,
-        #[arg(short, long, help = "Gas limit for each transaction")]
+        #[arg(long, help = "Gas limit for each transaction")]
         gas_limit: u64,
-        #[arg(short, long, help = "Slot time in seconds")]
+        #[arg(long, help = "Slot time in seconds")]
         slot_time: u64,
     },
     #[command(about = "Sends blob spam transactions")]
     Blobs {
-        #[arg(short, long, help = "Private key of the account to send spam from")]
+        #[arg(long, help = "Private key of the account to send spam from")]
         sk: String,
-        #[arg(short, long, help = "Seed for the random number generator")]
+        #[arg(long, help = "Seed for the random number generator")]
         seed: u64,
-        #[arg(short, long, help = "Whether to use access list or not")]
+        #[arg(long, help = "Whether to use access list or not")]
         no_al: bool,
-        #[arg(short, long, help = "Path to the corpus file")]
+        #[arg(long, help = "Path to the corpus file")]
         corpus: String,
-        #[arg(short, long, help = "RPC endpoint to connect to")]
+        #[arg(long, help = "RPC endpoint to connect to")]
         rpc: String,
-        #[arg(short, long, help = "Number of transactions to send")]
+        #[arg(long, help = "Number of transactions to send")]
         tx_count: u64,
-        #[arg(short, long, help = "Gas limit for each transaction")]
+        #[arg(long, help = "Gas limit for each transaction")]
         gas_limit: u64,
-        #[arg(short, long, help = "Slot time in seconds")]
+        #[arg(long, help = "Slot time in seconds")]
         slot_time: u64,
     },
     #[command(about = "Sends 7702 spam transactions")]
     Pectra {
-        #[arg(short, long, help = "Private key of the account to send spam from")]
+        #[arg(long, help = "Private key of the account to send spam from")]
         sk: String,
-        #[arg(short, long, help = "Seed for the random number generator")]
+        #[arg(long, help = "Seed for the random number generator")]
         seed: u64,
-        #[arg(short, long, help = "Whether to use access list or not")]
+        #[arg(long, help = "Whether to use access list or not")]
         no_al: bool,
-        #[arg(short, long, help = "Path to the corpus file")]
+        #[arg(long, help = "Path to the corpus file")]
         corpus: String,
-        #[arg(short, long, help = "RPC endpoint to connect to")]
+        #[arg(long, help = "RPC endpoint to connect to")]
         rpc: String,
-        #[arg(short, long, help = "Number of transactions to send")]
+        #[arg(long, help = "Number of transactions to send")]
         tx_count: u64,
-        #[arg(short, long, help = "Gas limit for each transaction")]
+        #[arg(long, help = "Gas limit for each transaction")]
         gas_limit: u64,
-        #[arg(short, long, help = "Slot time in seconds")]
+        #[arg(long, help = "Slot time in seconds")]
         slot_time: u64,
     },
 }
