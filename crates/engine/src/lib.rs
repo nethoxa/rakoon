@@ -1,4 +1,6 @@
+use alloy::{primitives::{Address, U256}, rpc::types::TransactionRequest};
 use spammer::{config::Config, errors::SpammerError, Spammer};
+
 
 pub struct Engine {
     sk: String,
@@ -79,6 +81,18 @@ impl Engine {
 
     pub async fn run_airdrop(&self) -> Result<(), String> {
         let config = self.setup_config().await.unwrap();
+        let faucet = Address::from_public_key(config.faucet.verifying_key());
+
+        for key in config.keys {
+            let address = Address::from_public_key(key.verifying_key());
+
+            let tx = TransactionRequest::default()
+                .from(faucet)
+                .to(address)
+                .value(U256::from(self.airdrop_value));
+
+            
+        }
 
         Ok(())
     }

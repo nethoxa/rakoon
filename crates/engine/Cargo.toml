@@ -5,3 +5,4 @@ edition.workspace = true
 
 [dependencies]
 spammer = { workspace = true}
+alloy = { workspace = true }
