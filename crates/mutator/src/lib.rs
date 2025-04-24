@@ -1,4 +1,4 @@
-use rand::{Rng, rngs::StdRng, SeedableRng};
+use rand::{Rng, SeedableRng, rngs::StdRng};
 mod constants;
 mod operations;
 

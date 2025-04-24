@@ -1,6 +1,8 @@
-use alloy::{primitives::{Address, U256}, rpc::types::TransactionRequest};
-use spammer::{config::Config, errors::SpammerError, Spammer};
-
+use alloy::{
+    primitives::{Address, U256},
+    rpc::types::TransactionRequest,
+};
+use spammer::{Spammer, config::Config, errors::SpammerError};
 
 pub struct Engine {
     sk: String,
@@ -73,9 +75,24 @@ impl Engine {
 
     async fn setup_config(&self) -> Result<Config, SpammerError> {
         if self.sk.is_empty() || self.gas_limit == 0 || self.corpus.is_empty() || self.seed == 0 {
-            Config::default(self.rpc.clone(), self.tx_count, self.no_al, self.max_operations_per_mutation)
+            Config::default(
+                self.rpc.clone(),
+                self.tx_count,
+                self.no_al,
+                self.max_operations_per_mutation,
+            )
         } else {
-            Config::new(self.rpc.clone(), self.sk.clone(), self.gas_limit, self.tx_count, self.corpus.clone(), self.seed, self.no_al, self.max_operations_per_mutation).await
+            Config::new(
+                self.rpc.clone(),
+                self.sk.clone(),
+                self.gas_limit,
+                self.tx_count,
+                self.corpus.clone(),
+                self.seed,
+                self.no_al,
+                self.max_operations_per_mutation,
+            )
+            .await
         }
     }
 
@@ -90,8 +107,6 @@ impl Engine {
                 .from(faucet)
                 .to(address)
                 .value(U256::from(self.airdrop_value));
-
-            
         }
 
         Ok(())

@@ -1,6 +1,8 @@
 use crate::{errors::SpammerError, types::Backend};
 use alloy::{
-    eips::eip1898::BlockNumberOrTag, providers::{Provider, ProviderBuilder}, signers::{k256::ecdsa::SigningKey, local::PrivateKeySigner}
+    eips::eip1898::BlockNumberOrTag,
+    providers::{Provider, ProviderBuilder},
+    signers::{k256::ecdsa::SigningKey, local::PrivateKeySigner},
 };
 use common::{SK, STATIC_KEYS};
 use mutator::Mutator;
@@ -21,10 +23,17 @@ pub struct Config {
 }
 
 impl Config {
-    pub fn default(rpc: String, n: u64, access_list: bool, max_operations_per_mutation: usize) -> Result<Self, SpammerError> {
+    pub fn default(
+        rpc: String,
+        n: u64,
+        access_list: bool,
+        max_operations_per_mutation: usize,
+    ) -> Result<Self, SpammerError> {
         let faucet = SigningKey::from_bytes(SK.as_bytes().into()).unwrap();
         let rpc_url = rpc.parse().unwrap();
-        let backend = ProviderBuilder::new().wallet::<PrivateKeySigner>(faucet.clone().into()).connect_http(rpc_url);
+        let backend = ProviderBuilder::new()
+            .wallet::<PrivateKeySigner>(faucet.clone().into())
+            .connect_http(rpc_url);
 
         let mut keys = Vec::new();
         for i in 0..STATIC_KEYS.len() {
@@ -58,7 +67,9 @@ impl Config {
     ) -> Result<Self, SpammerError> {
         let faucet = SigningKey::from_bytes(SK.as_bytes().into()).unwrap();
         let rpc_url = rpc.parse().unwrap();
-        let backend = ProviderBuilder::new().wallet::<PrivateKeySigner>(faucet.clone().into()).connect_http(rpc_url);
+        let backend = ProviderBuilder::new()
+            .wallet::<PrivateKeySigner>(faucet.clone().into())
+            .connect_http(rpc_url);
 
         let faucet = if sk.is_empty() {
             SigningKey::from_bytes(SK.as_bytes().into()).unwrap()
