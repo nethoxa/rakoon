@@ -23,7 +23,7 @@ pub struct Config {
 }
 
 impl Config {
-    pub fn default(rpc: String, n: u64, access_list: bool) -> Result<Self, SpammerError> {
+    pub fn default(rpc: String, n: u64, access_list: bool, max_operations_per_mutation: usize) -> Result<Self, SpammerError> {
         let rpc_url = rpc.parse().unwrap();
         let backend = ProviderBuilder::new().connect_http(rpc_url);
 
@@ -43,7 +43,7 @@ impl Config {
             gas_limit: 30_000_000,
             slot_time: 12,
             seed: 0,
-            mutator: Mutator::new(0),
+            mutator: Mutator::new(max_operations_per_mutation, 0),
         })
     }
 
@@ -55,6 +55,7 @@ impl Config {
         corpus_file: String,
         seed: u64,
         access_list: bool,
+        max_operations_per_mutation: usize,
     ) -> Result<Self, SpammerError> {
         let rpc_url = rpc.parse().unwrap();
         let backend = ProviderBuilder::new().connect_http(rpc_url);
@@ -107,7 +108,7 @@ impl Config {
             gas_limit,
             slot_time: 12,
             seed,
-            mutator: Mutator::new(seed),
+            mutator: Mutator::new(max_operations_per_mutation, seed),
         })
     }
 
