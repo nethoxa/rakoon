@@ -2,16 +2,12 @@ pub mod config;
 pub mod errors;
 pub mod types;
 
-use std::hash::Hash;
 use std::thread::sleep;
 use std::time::Duration;
 
 use alloy::consensus::{SignableTransaction, TxLegacy};
-use alloy::network::TransactionBuilder;
 use alloy::primitives::{Address, TxKind, U256};
-use alloy::rpc::types::{TransactionInput, TransactionRequest};
 use alloy::signers::Signature;
-use alloy::signers::k256::ecdsa::signature::SignerMut;
 use alloy::{providers::Provider, signers::k256::ecdsa::SigningKey};
 use rand::{Rng, RngCore};
 
@@ -19,19 +15,18 @@ use crate::{config::Config, errors::SpammerError};
 
 pub struct Spammer {
     config: Config,
-    chain_id: u64,
 }
 
 impl Spammer {
-    pub fn new(config: Config, chain_id: u64) -> Self {
-        Self { config, chain_id }
+    pub fn new(config: Config) -> Self {
+        Self { config }
     }
 
     pub async fn run(&self) -> Result<(), SpammerError> {
         todo!()
     }
 
-    async fn send_legacy_tx(&self, key: &SigningKey) -> Result<(), SpammerError> {
+    pub async fn send_legacy_txs(&self, key: &SigningKey) -> Result<(), SpammerError> {
         let pk = key.verifying_key();
         let from = Address::from_public_key(pk);
         let chain_id = self

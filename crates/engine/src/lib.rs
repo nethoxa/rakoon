@@ -1,3 +1,5 @@
+use std::{thread::sleep, time::Duration};
+
 use alloy::{
     primitives::{Address, U256}, providers::Provider, rpc::types::TransactionRequest
 };
@@ -122,8 +124,17 @@ impl Engine {
         Ok(())
     }
 
-    pub fn run_spam(&self) -> Result<(), String> {
-        todo!()
+    pub async fn run_spam(&self) -> Result<(), String> {
+        loop {
+            self.run_airdrop().await.unwrap();
+            let config = self.setup_config().await.unwrap();
+            let keys = config.keys.clone();
+            let spammer = Spammer::new(config);
+            for key in keys {
+                spammer.send_legacy_txs(&key).await.unwrap();
+            }
+            sleep(Duration::from_secs(self.slot_time));
+        }
     }
 
     pub fn run_blob_spam(&self) -> Result<(), String> {

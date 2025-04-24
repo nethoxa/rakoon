@@ -1,12 +1,13 @@
 use crate::{errors::SpammerError, types::Backend};
 use alloy::{
     eips::eip1898::BlockNumberOrTag,
-    providers::{Provider, ProviderBuilder, WalletProvider},
+    providers::{Provider, ProviderBuilder},
     signers::{k256::ecdsa::SigningKey, local::PrivateKeySigner},
 };
 use common::{SK, STATIC_KEYS};
 use mutator::Mutator;
 
+#[derive(Clone)]
 pub struct Config {
     pub backend: Backend,
 

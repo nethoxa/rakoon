@@ -135,7 +135,7 @@ async fn main() {
                 slot_time
             );
 
-            match engine.run_spam() {
+            match engine.run_spam().await {
                 Ok(_) => println!("[{}] Spam completed successfully", "+".bright_green()),
                 Err(e) => println!("[{}] Spam failed: {}", "-".bright_red(), e),
             }
