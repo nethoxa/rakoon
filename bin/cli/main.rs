@@ -83,25 +83,6 @@ enum Commands {
         #[arg(short, long)]
         rpc: String,
     },
-    /// Tries to unstuck an account
-    Unstuck {
-        #[arg(short, long)]
-        sk: String,
-        #[arg(short, long)]
-        seed: u64,
-        #[arg(short, long)]
-        no_al: bool,
-        #[arg(short, long)]
-        corpus: String,
-        #[arg(short, long)]
-        rpc: String,
-        #[arg(short, long)]
-        tx_count: u64,
-        #[arg(short, long)]
-        gas_limit: u64,
-        #[arg(short, long)]
-        slot_time: u64,
-    },
 }
 
 #[tokio::main]
@@ -242,39 +223,6 @@ async fn main() {
             match engine.run_create() {
                 Ok(_) => println!("[{}] Create completed successfully", "+".bright_green()),
                 Err(e) => println!("[{}] Create failed: {}", "-".bright_red(), e),
-            }
-        }
-        Commands::Unstuck {
-            sk,
-            rpc,
-            seed,
-            no_al,
-            corpus,
-            tx_count,
-            gas_limit,
-            slot_time,
-        } => {
-            engine.set_sk(sk.clone());
-            engine.set_rpc(rpc.clone());
-            engine.set_seed(seed);
-            engine.set_no_al(no_al);
-            engine.set_corpus(corpus);
-            engine.set_tx_count(tx_count);
-            engine.set_gas_limit(gas_limit);
-            engine.set_slot_time(slot_time);
-
-            println!(
-                "[{}] Running unstuck with sk: {}, rpc: {}, tx_count: {}, slot_time: {}",
-                "+".bright_green(),
-                sk,
-                rpc,
-                tx_count,
-                slot_time
-            );
-
-            match engine.run_unstuck() {
-                Ok(_) => println!("[{}] Unstuck completed successfully", "+".bright_green()),
-                Err(e) => println!("[{}] Unstuck failed: {}", "-".bright_red(), e),
             }
         }
     }

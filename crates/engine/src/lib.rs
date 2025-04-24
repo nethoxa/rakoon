@@ -1,6 +1,5 @@
 use alloy::{
-    primitives::{Address, U256},
-    rpc::types::TransactionRequest,
+    primitives::{Address, U256}, providers::Provider, rpc::types::TransactionRequest
 };
 use spammer::{Spammer, config::Config, errors::SpammerError};
 
@@ -98,15 +97,26 @@ impl Engine {
 
     pub async fn run_airdrop(&self) -> Result<(), String> {
         let config = self.setup_config().await.unwrap();
-        let faucet = Address::from_public_key(config.faucet.verifying_key());
 
         for key in config.keys {
             let address = Address::from_public_key(key.verifying_key());
 
             let tx = TransactionRequest::default()
-                .from(faucet)
                 .to(address)
                 .value(U256::from(self.airdrop_value));
+
+            let balance_before = config.backend.get_balance(address).await.unwrap();
+            let pending: alloy::providers::PendingTransactionBuilder<alloy::network::Ethereum> = config.backend.send_transaction(tx).await.map_err(|e| SpammerError::ProviderError(e.to_string())).unwrap();
+            let receipt = pending.get_receipt().await.map_err(|e| SpammerError::ProviderError(e.to_string())).unwrap();
+            if receipt.status() {
+                println!("Airdrop to {} sent successfully", address);
+                let balance_after = config.backend.get_balance(address).await.unwrap();
+                if balance_after - balance_before != U256::from(self.airdrop_value) {
+                    println!("Airdropped value to {} is not correct, expected {} but got {}", address, self.airdrop_value, balance_after - balance_before);
+                }
+            } else {
+                println!("Airdrop to {} failed", address);
+            }
         }
 
         Ok(())
@@ -125,10 +135,6 @@ impl Engine {
     }
 
     pub fn run_create(&self) -> Result<(), String> {
-        todo!()
-    }
-
-    pub fn run_unstuck(&self) -> Result<(), String> {
         todo!()
     }
 }

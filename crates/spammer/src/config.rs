@@ -1,7 +1,7 @@
 use crate::{errors::SpammerError, types::Backend};
 use alloy::{
     eips::eip1898::BlockNumberOrTag,
-    providers::{Provider, ProviderBuilder},
+    providers::{Provider, ProviderBuilder, WalletProvider},
     signers::{k256::ecdsa::SigningKey, local::PrivateKeySigner},
 };
 use common::{SK, STATIC_KEYS};
