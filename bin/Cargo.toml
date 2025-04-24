@@ -11,3 +11,4 @@ path = "cli/main.rs"
 engine = { workspace = true }
 clap = { workspace = true }
 colored = { workspace = true }
+tokio = { workspace = true }

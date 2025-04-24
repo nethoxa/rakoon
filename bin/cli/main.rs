@@ -24,7 +24,7 @@ enum Commands {
         #[arg(short, long)]
         sk: String,
         #[arg(short, long)]
-        seed: String,
+        seed: u64,
         #[arg(short, long)]
         no_al: bool,
         #[arg(short, long)]
@@ -43,7 +43,7 @@ enum Commands {
         #[arg(short, long)]
         sk: String,
         #[arg(short, long)]
-        seed: String,
+        seed: u64,
         #[arg(short, long)]
         no_al: bool,
         #[arg(short, long)]
@@ -62,7 +62,7 @@ enum Commands {
         #[arg(short, long)]
         sk: String,
         #[arg(short, long)]
-        seed: String,
+        seed: u64,
         #[arg(short, long)]
         no_al: bool,
         #[arg(short, long)]
@@ -88,7 +88,7 @@ enum Commands {
         #[arg(short, long)]
         sk: String,
         #[arg(short, long)]
-        seed: String,
+        seed: u64,
         #[arg(short, long)]
         no_al: bool,
         #[arg(short, long)]
@@ -104,7 +104,8 @@ enum Commands {
     },
 }
 
-fn main() {
+#[tokio::main]
+async fn main() {
     let mut engine = Engine::new();
     let cli = Cli::parse();
 
@@ -120,7 +121,7 @@ fn main() {
                 rpc
             );
 
-            match engine.run_airdrop() {
+            match engine.run_airdrop().await {
                 Ok(_) => println!("[{}] Airdrop completed successfully", "+".bright_green()),
                 Err(e) => println!("[{}] Airdrop failed: {}", "-".bright_red(), e),
             }

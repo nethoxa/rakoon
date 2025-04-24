@@ -1,6 +1,8 @@
+use spammer::{config::Config, errors::SpammerError, Spammer};
+
 pub struct Engine {
     sk: String,
-    seed: String,
+    seed: u64,
     no_al: bool,
     corpus: String,
     rpc: String,
@@ -8,13 +10,14 @@ pub struct Engine {
     gas_limit: u64,
     slot_time: u64,
     airdrop_value: u64,
+    max_operations_per_mutation: usize,
 }
 
 impl Engine {
     pub fn new() -> Self {
         Self {
             sk: String::new(),
-            seed: String::new(),
+            seed: 0,
             no_al: false,
             corpus: String::new(),
             rpc: String::new(),
@@ -22,6 +25,7 @@ impl Engine {
             gas_limit: 0,
             slot_time: 0,
             airdrop_value: 0,
+            max_operations_per_mutation: 0,
         }
     }
 
@@ -29,7 +33,7 @@ impl Engine {
         self.sk = sk;
     }
 
-    pub fn set_seed(&mut self, seed: String) {
+    pub fn set_seed(&mut self, seed: u64) {
         self.seed = seed;
     }
 
@@ -61,8 +65,22 @@ impl Engine {
         self.airdrop_value = airdrop_value;
     }
 
-    pub fn run_airdrop(&self) -> Result<(), String> {
-        todo!()
+    pub fn set_max_operations_per_mutation(&mut self, max_operations_per_mutation: usize) {
+        self.max_operations_per_mutation = max_operations_per_mutation;
+    }
+
+    async fn setup_config(&self) -> Result<Config, SpammerError> {
+        if self.sk.is_empty() || self.gas_limit == 0 || self.corpus.is_empty() || self.seed == 0 {
+            Config::default(self.rpc.clone(), self.tx_count, self.no_al, self.max_operations_per_mutation)
+        } else {
+            Config::new(self.rpc.clone(), self.sk.clone(), self.gas_limit, self.tx_count, self.corpus.clone(), self.seed, self.no_al, self.max_operations_per_mutation).await
+        }
+    }
+
+    pub async fn run_airdrop(&self) -> Result<(), String> {
+        let config = self.setup_config().await.unwrap();
+
+        Ok(())
     }
 
     pub fn run_spam(&self) -> Result<(), String> {

@@ -19,11 +19,12 @@ use crate::{config::Config, errors::SpammerError};
 
 pub struct Spammer {
     config: Config,
+    chain_id: u64
 }
 
 impl Spammer {
-    pub fn new(config: Config) -> Self {
-        Self { config }
+    pub fn new(config: Config, chain_id: u64) -> Self {
+        Self { config, chain_id }
     }
 
     pub async fn run(&self) -> Result<(), SpammerError> {
