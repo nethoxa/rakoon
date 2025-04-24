@@ -12,76 +12,69 @@ struct Cli {
 
 #[derive(Subcommand)]
 enum Commands {
-    /// Airdrops to a list of accounts
+    #[command(about = "Sends some ETH to a pre-set list of accounts")]
     Airdrop {
-        #[arg(short, long)]
+        #[arg(short, long, help = "Private key of the account to send ETH from")]
         sk: String,
-        #[arg(short, long)]
+        #[arg(short, long, help = "RPC endpoint to connect to")]
         rpc: String,
     },
-    /// Send spam transactions
+    #[command(about = "Sends spam transactions")]
     Spam {
-        #[arg(short, long)]
+        #[arg(short, long, help = "Private key of the account to send spam from")]
         sk: String,
-        #[arg(short, long)]
+        #[arg(short, long, help = "Seed for the random number generator")]
         seed: u64,
-        #[arg(short, long)]
+        #[arg(short, long, help = "Whether to use access list or not")]
         no_al: bool,
-        #[arg(short, long)]
+        #[arg(short, long, help = "Path to the corpus file")]
         corpus: String,
-        #[arg(short, long)]
+        #[arg(short, long, help = "RPC endpoint to connect to")]
         rpc: String,
-        #[arg(short, long)]
+        #[arg(short, long, help = "Number of transactions to send")]
         tx_count: u64,
-        #[arg(short, long)]
+        #[arg(short, long, help = "Gas limit for each transaction")]
         gas_limit: u64,
-        #[arg(short, long)]
+        #[arg(short, long, help = "Slot time in seconds")]
         slot_time: u64,
     },
-    /// Send blob spam transactions
+    #[command(about = "Sends blob spam transactions")]
     Blobs {
-        #[arg(short, long)]
+        #[arg(short, long, help = "Private key of the account to send spam from")]
         sk: String,
-        #[arg(short, long)]
+        #[arg(short, long, help = "Seed for the random number generator")]
         seed: u64,
-        #[arg(short, long)]
+        #[arg(short, long, help = "Whether to use access list or not")]
         no_al: bool,
-        #[arg(short, long)]
+        #[arg(short, long, help = "Path to the corpus file")]
         corpus: String,
-        #[arg(short, long)]
+        #[arg(short, long, help = "RPC endpoint to connect to")]
         rpc: String,
-        #[arg(short, long)]
+        #[arg(short, long, help = "Number of transactions to send")]
         tx_count: u64,
-        #[arg(short, long)]
+        #[arg(short, long, help = "Gas limit for each transaction")]
         gas_limit: u64,
-        #[arg(short, long)]
+        #[arg(short, long, help = "Slot time in seconds")]
         slot_time: u64,
     },
-    /// Send 7702 spam transactions
+    #[command(about = "Sends 7702 spam transactions")]
     Pectra {
-        #[arg(short, long)]
+        #[arg(short, long, help = "Private key of the account to send spam from")]
         sk: String,
-        #[arg(short, long)]
+        #[arg(short, long, help = "Seed for the random number generator")]
         seed: u64,
-        #[arg(short, long)]
+        #[arg(short, long, help = "Whether to use access list or not")]
         no_al: bool,
-        #[arg(short, long)]
+        #[arg(short, long, help = "Path to the corpus file")]
         corpus: String,
-        #[arg(short, long)]
+        #[arg(short, long, help = "RPC endpoint to connect to")]
         rpc: String,
-        #[arg(short, long)]
+        #[arg(short, long, help = "Number of transactions to send")]
         tx_count: u64,
-        #[arg(short, long)]
+        #[arg(short, long, help = "Gas limit for each transaction")]
         gas_limit: u64,
-        #[arg(short, long)]
+        #[arg(short, long, help = "Slot time in seconds")]
         slot_time: u64,
-    },
-    /// Create ephemeral accounts
-    Create {
-        #[arg(short, long)]
-        count: u64,
-        #[arg(short, long)]
-        rpc: String,
     },
 }
 
@@ -207,22 +200,6 @@ async fn main() {
                     "+".bright_green()
                 ),
                 Err(e) => println!("[{}] Pectra spam failed: {}", "-".bright_red(), e),
-            }
-        }
-        Commands::Create { rpc, count } => {
-            engine.set_rpc(rpc.clone());
-            engine.set_tx_count(count);
-
-            println!(
-                "[{}] Creating {} accounts with rpc: {}",
-                "+".bright_green(),
-                count,
-                rpc
-            );
-
-            match engine.run_create() {
-                Ok(_) => println!("[{}] Create completed successfully", "+".bright_green()),
-                Err(e) => println!("[{}] Create failed: {}", "-".bright_red(), e),
             }
         }
     }
