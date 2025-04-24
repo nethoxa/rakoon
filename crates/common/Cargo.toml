@@ -1,7 +1,6 @@
 [package]
-name = "mutator"
+name = "common"
 version.workspace = true
 edition.workspace = true
 
 [dependencies]
-rand = { workspace = true }

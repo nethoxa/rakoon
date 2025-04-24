@@ -4,3 +4,7 @@ version.workspace = true
 edition.workspace = true
 
 [dependencies]
+alloy = { workspace = true }
+mutator = { workspace = true }
+rand = { workspace = true }
+common = { workspace = true }

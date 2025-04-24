@@ -7,7 +7,7 @@ rust-version = "1.85"
 [workspace]
 members = [
     "bin", "crates/mutator", "crates/txs", "crates/spammer", "crates/engine"
-]
+, "crates/common"]
 resolver = "3"
 
 [workspace.dependencies]
@@ -15,5 +15,9 @@ engine = { path = "crates/engine" }
 mutator = { path = "crates/mutator" }
 txs = { path = "crates/txs" }
 spammer = { path = "crates/spammer" }
-clap = { version = "4.5.37", features = ["derive"] }
+common = { path = "crates/common" }
+
+clap = { version = "4.5", features = ["derive"] }
 colored = "3.0.0"
+alloy = { version = "0.15", features = ["full"] }
+rand = "0.9"
