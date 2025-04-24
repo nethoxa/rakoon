@@ -32,27 +32,27 @@ impl Engine {
     pub fn set_seed(&mut self, seed: String) {
         self.seed = seed;
     }
-    
+
     pub fn set_no_al(&mut self, no_al: bool) {
         self.no_al = no_al;
     }
-    
+
     pub fn set_corpus(&mut self, corpus: String) {
         self.corpus = corpus;
     }
-    
+
     pub fn set_rpc(&mut self, rpc: String) {
         self.rpc = rpc;
     }
-    
+
     pub fn set_tx_count(&mut self, tx_count: u64) {
         self.tx_count = tx_count;
     }
-    
+
     pub fn set_gas_limit(&mut self, gas_limit: u64) {
         self.gas_limit = gas_limit;
     }
-    
+
     pub fn set_slot_time(&mut self, slot_time: u64) {
         self.slot_time = slot_time;
     }
