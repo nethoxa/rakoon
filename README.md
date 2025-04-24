@@ -1,4 +1,4 @@
-# TX-Fuzz
+# tx-fuzz
 
 This is a rewrite of the tx fuzzer written by [MariusVanDerWijden](https://github.com/MariusVanDerWijden) in Rust with enhanced performance. See the [benchmarks](#benchmarks) section below.
 
