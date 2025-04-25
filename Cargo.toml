@@ -1,13 +1,13 @@
 [workspace.package]
-name = "tx-fuzz"
+name = "rakoon"
 version = "0.1.0"
 edition = "2024"
 rust-version = "1.85"
 
 [workspace]
 members = [
-    "bin", "crates/mutator", "crates/spammer", "crates/engine", "crates/common"
-]
+    "bin", "crates/mutator", "crates/engine", "crates/common"
+, "crates/app", "crates/txs"]
 resolver = "3"
 
 [workspace.dependencies]
@@ -16,8 +16,7 @@ mutator = { path = "crates/mutator" }
 spammer = { path = "crates/spammer" }
 common = { path = "crates/common" }
 
-clap = { version = "4.5", features = ["derive"] }
-colored = "3.0.0"
-alloy = { version = "0.15", features = ["full"] }
-rand = "0.9"
+crossterm = "0.29.0"
+ratatui = "0.29.0"
 tokio = { version = "1.44.0", features = ["full"] }
+colored = "3.0.0"

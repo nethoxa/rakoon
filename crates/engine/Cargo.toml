@@ -2,8 +2,6 @@
 name = "engine"
 version.workspace = true
 edition.workspace = true
+rust-version.workspace = true
 
 [dependencies]
-spammer = { workspace = true}
-alloy = { workspace = true }
-common = { workspace = true }

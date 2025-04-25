@@ -13,3 +13,7 @@ make run
 and the user interface will pop-up, showing all the available commands and his flags. For reference, we put them here:
 
 TODO
+
+## Future features
+- [ ] Make it possible to run in standalone mode without UI, worth it? I dont think so
+- [ ] Add more mutators

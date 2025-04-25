@@ -1,14 +1,15 @@
 [package]
-name = "tx-fuzz"
+name = "rakoon"
 version = "0.1.0"
 edition = "2024"
-
+rust-version = "1.85"
 [[bin]]
-name = "tx-fuzz"
+name = "rakoon"
 path = "cli/main.rs"
 
 [dependencies]
-engine = { workspace = true }
-clap = { workspace = true }
-colored = { workspace = true }
+crossterm = { workspace = true }
+ratatui = { workspace = true }
 tokio = { workspace = true }
+
+app = { path = "../crates/app" }
