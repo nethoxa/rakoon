@@ -8,6 +8,7 @@ use alloy::{
     primitives::{Address, TxKind, U256},
     providers::Provider,
     signers::{k256::ecdsa::SigningKey, Signature},
+    rpc::types::TransactionRequest
 };
 use rand::{Rng, RngCore};
 
@@ -26,7 +27,7 @@ impl Spammer {
     }
 
     /// Send legacy transactions.
-    pub async fn send_legacy_txs(&self, key: &SigningKey) -> Result<(), SpammerError> {
+    pub async fn send_basic_txs(&self, key: &SigningKey) -> Result<(), SpammerError> {
         let from = Address::from_public_key(key.verifying_key());
 
         // Get the chain ID
@@ -63,7 +64,7 @@ impl Spammer {
             Address::from_slice(&bytes)
         };
 
-        for i in 0..self.config.tx_number {
+        for _ in 0..self.config.tx_number {
             // Get the account -> nonce, as we do not make assumptions about the nonce
             let account = self
                 .config
@@ -73,16 +74,46 @@ impl Spammer {
                 .map_err(|e| SpammerError::ProviderError(e.to_string()))?;
 
             // Create the transaction
+            let tx = TransactionRequest {
+                from: Some(from),
+                to: Some(TxKind::Call(to)),
+                gas: Some(30_000_000),
+                gas_price: Some(gas_price),
+                max_fee_per_gas: Some(gas_price),
+                max_priority_fee_per_gas: Some(gas_price),
+                value: None, // [nethoxa] TODO: make this dynamic
+                input: code.clone().into(),
+                nonce: Some(account.nonce),
+                chain_id: Some(chain_id),
+                access_list: None, // [nethoxa] TODO: make this dynamic
+                transaction_type: Some(0),
+                blob_versioned_hashes: None,
+                sidecar: None,
+                authorization_list: None,
+                max_fee_per_blob_gas: None,
+            };
+
+            let gas = self.config.backend.estimate_gas(tx).await.map_err(|e| SpammerError::ProviderError(e.to_string()))?;
+            
+            if self.config.access_list {
+                let tmp = rand::rng().random_range(range)
+
+            } else {
+
+
+            }
+
+
             let tx = TxLegacy {
                 chain_id: Some(chain_id),
                 nonce: account.nonce,
                 gas_price,
-                gas_limit: 1000000, // [nethoxa] TODO: make this dynamic
+                gas_limit: gas,
                 to: TxKind::Call(to),
-                value: U256::from(i % 2), // [nethoxa] TODO: make this dynamic
+                value: U256::ZERO, // [nethoxa] TODO: make this dynamic
                 input: code.clone().into(),
             };
-
+            
             // Sign the transaction at the bytecode level
             let tx_encoded = tx.encoded_for_signing();
             let (signature, recovery_id) = key
@@ -106,7 +137,7 @@ impl Spammer {
                 .map_err(|e| SpammerError::ProviderError(e.to_string()))?;
 
             // Wait a bit to not saturate the network
-            sleep(Duration::from_millis(10));
+            sleep(Duration::from_millis(10)); // [nethoxa] TODO: make this dynamic
         }
         Ok(())
     }
@@ -149,7 +180,7 @@ impl Spammer {
             Address::from_slice(&bytes)
         };
 
-        for i in 0..self.config.tx_number {
+        for _ in 0..self.config.tx_number {
             // Get the account -> nonce, as we do not make assumptions about the nonce
             let account = self
                 .config
