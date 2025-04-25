@@ -25,7 +25,7 @@ pub struct App {
 
 impl App {
     pub fn new() -> Self {
-        Self { engine: Engine::new() }
+        Self { engine: Engine::default() }
     }
 
     pub fn run(&mut self) -> Result<(), io::Error> {
@@ -106,20 +106,6 @@ impl App {
                                         history.push((command.clone(), format!("[{}] {}", "-".bright_red(), "Engine already running")));
                                     }
                                     "stop" => match self.engine.stop() {
-                                        Ok(output) => {
-                                            history.push((command.clone(), format!("[{}] {}", "+".bright_green(), output)));
-                                        }
-                                        Err(e) => {
-                                            history.push((
-                                                command.clone(),
-                                                format!(
-                                                    "[{}] {}",
-                                                    "-".bright_red(), e
-                                                ),
-                                            ));
-                                        }
-                                    },
-                                    "pause" => match self.engine.pause() {
                                         Ok(output) => {
                                             history.push((command.clone(), format!("[{}] {}", "+".bright_green(), output)));
                                         }

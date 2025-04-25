@@ -20,3 +20,4 @@ crossterm = "0.29.0"
 ratatui = "0.29.0"
 tokio = { version = "1.44.0", features = ["full"] }
 colored = "3.0.0"
+alloy = "0.15.0"

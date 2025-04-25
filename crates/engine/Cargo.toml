@@ -5,3 +5,5 @@ edition.workspace = true
 rust-version.workspace = true
 
 [dependencies]
+alloy = { workspace = true }
+rand = "0.9.1"

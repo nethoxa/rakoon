@@ -1,56 +1,45 @@
 pub mod errors;
+pub mod setters;
 
 use crate::errors::EngineError;
+use alloy::signers::k256::ecdsa::SigningKey;
 
 #[derive(PartialEq, Eq)]
 pub enum EngineStatus {
     Stopped,
     Running,
-    Paused,
 }
 
 pub struct Engine {
     status: EngineStatus,
+    faucet: SigningKey,
+    keys: Vec<SigningKey>,
+    corpus: Vec<Vec<u8>>,
+    seed: u64,
+    gas_limit: u64,
+    random_txs: bool,
+    legacy_txs: bool,
+    legacy_creation_txs: bool,
+    empty_al_txs: bool,
+    empty_al_creation_txs: bool,
+    eip1559_txs: bool,
+    eip1559_creation_txs: bool,
+    eip1559_al_txs: bool,
+    eip1559_al_creation_txs: bool,
+    blob_txs: bool,
+    blob_creation_txs: bool,
+    blob_al_txs: bool,
+    blob_al_creation_txs: bool,
+    auth_txs: bool,
+    auth_creation_txs: bool,
+    auth_al_txs: bool,
+    auth_al_creation_txs: bool,
+    auth_blob_txs: bool,
+    auth_blob_creation_txs: bool,
+    auth_blob_al_txs: bool,
+    auth_blob_al_creation_txs: bool,
 }
 
 impl Engine {
-    pub fn new() -> Self {
-        Self { status: EngineStatus::Stopped }
-    }
 
-    pub fn is_running(&self) -> bool {
-        self.status == EngineStatus::Running
-    }
-
-    pub fn is_paused(&self) -> bool {
-        self.status == EngineStatus::Paused
-    }
-
-    pub fn is_stopped(&self) -> bool {
-        self.status == EngineStatus::Stopped
-    }
-
-    pub fn start(&mut self) -> Result<String, EngineError> {
-        if self.is_running() {
-            return Err(EngineError::AlreadyRunning);
-        }
-        self.status = EngineStatus::Running;
-        Ok("Engine started".to_string())
-    }
-
-    pub fn stop(&mut self) -> Result<String, EngineError> {
-        if self.is_stopped() {
-            return Err(EngineError::AlreadyStopped);
-        }
-        self.status = EngineStatus::Stopped;
-        Ok("Engine stopped".to_string())
-    }
-
-    pub fn pause(&mut self) -> Result<String, EngineError> {
-        if self.is_paused() {
-            return Err(EngineError::AlreadyPaused);
-        }
-        self.status = EngineStatus::Paused;
-        Ok("Engine paused".to_string())
-    }
 }

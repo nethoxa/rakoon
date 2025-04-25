@@ -13,3 +13,4 @@ ratatui = { workspace = true }
 tokio = { workspace = true }
 
 app = { path = "../crates/app" }
+common = { path = "../crates/common" }
