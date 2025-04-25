@@ -4,7 +4,7 @@ pub mod errors;
 use std::{thread::sleep, time::Duration};
 
 use alloy::{
-    consensus::{SignableTransaction, TxEip4844, TxLegacy},
+    consensus::{SignableTransaction, TxEip4844, TxEip7702, TxLegacy},
     primitives::{Address, TxKind, U256},
     providers::Provider,
     signers::{k256::ecdsa::SigningKey, Signature},
@@ -203,12 +203,90 @@ impl Spammer {
 
     /// Send 7702 transactions.
     pub async fn send_7702_tx(&self, key: &SigningKey) -> Result<(), SpammerError> {
-        todo!()
-    }
+        let from = Address::from_public_key(key.verifying_key());
 
-    /// Send random transactions.
-    pub async fn send_random_tx(&self, key: &SigningKey) -> Result<(), SpammerError> {
-        // [nethoxa] TODO: I think of doing this like having a valid bytecode and calling the mutator on it
-        todo!()
+        // Get the chain ID
+        let chain_id = self
+            .config
+            .backend
+            .get_chain_id()
+            .await
+            .map_err(|e| SpammerError::ProviderError(e.to_string()))?;
+
+        // Get the gas price
+        let gas_price = self
+            .config
+            .backend
+            .get_gas_price()
+            .await
+            .map_err(|e| SpammerError::ProviderError(e.to_string()))?;
+
+        // Generate random code
+        let code = {
+            // [nethoxa] TODO create valid code
+            let mut rng = rand::rng();
+            let length = rng.random_range(0..=128);
+            let mut bytes = vec![0u8; length];
+            rng.fill_bytes(&mut bytes);
+            bytes
+        };
+
+        // Generate a random `to` address
+        let to = {
+            let mut rng = rand::rng();
+            let mut bytes = vec![0u8; 20];
+            rng.fill_bytes(&mut bytes);
+            Address::from_slice(&bytes)
+        };
+
+        for i in 0..self.config.tx_number {
+            // Get the account -> nonce, as we do not make assumptions about the nonce
+            let account = self
+                .config
+                .backend
+                .get_account(from)
+                .await
+                .map_err(|e| SpammerError::ProviderError(e.to_string()))?;
+
+            // Create the transaction
+            let tx = TxEip7702 {
+                chain_id: chain_id,
+                nonce: account.nonce,
+                gas_limit: 1000000, // [nethoxa] TODO: make this dynamic
+                to,
+                value: U256::from(i % 2), // [nethoxa] TODO: make this dynamic
+                input: code.clone().into(),
+                max_fee_per_gas: todo!(),
+                max_priority_fee_per_gas: todo!(),
+                access_list: todo!(),
+                authorization_list: todo!(),
+            };
+
+            // Sign the transaction at the bytecode level
+            let tx_encoded = tx.encoded_for_signing();
+            let (signature, recovery_id) = key
+                .sign_recoverable(tx_encoded.as_slice())
+                .map_err(|e| SpammerError::SigningError(e.to_string()))?;
+            let tx_signed = tx.into_signed(Signature::from_bytes_and_parity(
+                signature.to_bytes().as_slice(),
+                recovery_id.to_byte() == 0,
+            )); // [nethoxa] TODO: check if this is correct
+
+            // Encode the transaction
+            let mut buffer = vec![];
+            tx_signed.rlp_encode(&mut buffer);
+
+            // Send the transaction
+            let _ = self
+                .config
+                .backend
+                .send_raw_transaction(buffer.as_slice())
+                .await
+                .map_err(|e| SpammerError::ProviderError(e.to_string()))?;
+
+            // Wait a bit to not saturate the network
+            sleep(Duration::from_millis(10));
+        }
+        Ok(())
     }
 }
