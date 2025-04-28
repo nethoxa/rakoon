@@ -6,4 +6,7 @@ rust-version.workspace = true
 
 [dependencies]
 alloy = { workspace = true }
-rand = "0.9.1"
+rand = { workspace = true }
+
+common = { path = "../common" }
+mutator = { path = "../mutator" }

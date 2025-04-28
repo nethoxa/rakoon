@@ -1,8 +1,5 @@
-use crate::Engine;
-use crate::errors::EngineError;
-use crate::EngineStatus;
-use alloy::signers::k256::ecdsa::SigningKey;
-use alloy::signers::k256::elliptic_curve::rand_core::OsRng;
+use crate::{Engine, EngineStatus, errors::EngineError};
+use alloy::signers::k256::{ecdsa::SigningKey, elliptic_curve::rand_core::OsRng};
 
 impl Engine {
     pub fn default() -> Self {

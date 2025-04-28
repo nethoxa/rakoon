@@ -1,8 +1,9 @@
 pub mod errors;
 pub mod setters;
+pub mod txs;
 
 use crate::errors::EngineError;
-use alloy::signers::k256::ecdsa::SigningKey;
+use alloy::{eips::eip1559, signers::k256::ecdsa::SigningKey};
 
 #[derive(PartialEq, Eq)]
 pub enum EngineStatus {
@@ -40,6 +41,4 @@ pub struct Engine {
     auth_blob_al_creation_txs: bool,
 }
 
-impl Engine {
-
-}
+impl Engine {}

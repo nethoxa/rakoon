@@ -6,8 +6,12 @@ rust-version = "1.85"
 
 [workspace]
 members = [
-    "bin", "crates/mutator", "crates/engine", "crates/common"
-, "crates/app", "crates/txs"]
+    "bin", 
+    "crates/mutator", 
+    "crates/engine", 
+    "crates/common", 
+    "crates/app"
+]
 resolver = "3"
 
 [workspace.dependencies]
@@ -21,3 +25,4 @@ ratatui = "0.29.0"
 tokio = { version = "1.44.0", features = ["full"] }
 colored = "3.0.0"
 alloy = "0.15.0"
+rand = "0.9.0"

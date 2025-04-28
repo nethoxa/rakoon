@@ -1,3 +1,4 @@
+use colored::Colorize;
 use crossterm::{
     event::{self, Event, KeyCode},
     execute,
@@ -17,7 +18,6 @@ use std::{
     sync::{Arc, Mutex},
     time::Duration,
 };
-use colored::Colorize;
 
 pub struct App {
     engine: Engine,
@@ -45,7 +45,8 @@ impl App {
 
         // Main loop
         loop {
-            terminal.draw(|f| self.ui(f, &info_text, &input, &command_history, &scroll_position))?;
+            terminal
+                .draw(|f| self.ui(f, &info_text, &input, &command_history, &scroll_position))?;
 
             // Handle events
             if event::poll(Duration::from_millis(100))? {
@@ -74,15 +75,15 @@ impl App {
                                 match command.trim() {
                                     "start" => match self.engine.start() {
                                         Ok(output) => {
-                                            history.push((command.clone(), format!("[{}] {}", "+".bright_green(), output)));
+                                            history.push((
+                                                command.clone(),
+                                                format!("[{}] {}", "+".bright_green(), output),
+                                            ));
                                         }
                                         Err(e) => {
                                             history.push((
                                                 command.clone(),
-                                                format!(
-                                                    "[{}] {}",
-                                                    "-".bright_red(), e
-                                                ),
+                                                format!("[{}] {}", "-".bright_red(), e),
                                             ));
                                         }
                                     }, // [nethoxa] add fields here so that they are setters
@@ -103,19 +104,26 @@ impl App {
                             } else {
                                 match command.trim() {
                                     "start" => {
-                                        history.push((command.clone(), format!("[{}] {}", "-".bright_red(), "Engine already running")));
+                                        history.push((
+                                            command.clone(),
+                                            format!(
+                                                "[{}] {}",
+                                                "-".bright_red(),
+                                                "Engine already running"
+                                            ),
+                                        ));
                                     }
                                     "stop" => match self.engine.stop() {
                                         Ok(output) => {
-                                            history.push((command.clone(), format!("[{}] {}", "+".bright_green(), output)));
+                                            history.push((
+                                                command.clone(),
+                                                format!("[{}] {}", "+".bright_green(), output),
+                                            ));
                                         }
                                         Err(e) => {
                                             history.push((
                                                 command.clone(),
-                                                format!(
-                                                    "[{}] {}",
-                                                    "-".bright_red(), e
-                                                ),
+                                                format!("[{}] {}", "-".bright_red(), e),
                                             ));
                                         }
                                     },
@@ -181,13 +189,25 @@ impl App {
         // Divide the screen in two parts (upper and lower)
         let main_chunks = Layout::default()
             .direction(Direction::Vertical)
-            .constraints([Constraint::Percentage(70), Constraint::Percentage(30)].as_ref())
+            .constraints(
+                [
+                    Constraint::Percentage(70),
+                    Constraint::Percentage(30),
+                ]
+                .as_ref(),
+            )
             .split(f.area());
 
         // Divide the upper part in two horizontal parts
         let top_chunks = Layout::default()
             .direction(Direction::Horizontal)
-            .constraints([Constraint::Percentage(50), Constraint::Percentage(50)].as_ref())
+            .constraints(
+                [
+                    Constraint::Percentage(50),
+                    Constraint::Percentage(50),
+                ]
+                .as_ref(),
+            )
             .split(main_chunks[0]);
 
         // Left panel (fuzzer info)
@@ -229,9 +249,9 @@ impl App {
         let history_text = Text::from(history_lines);
 
         let history_paragraph = Paragraph::new(history_text)
-        .block(Block::default().borders(Borders::ALL).title("Command history"))
-        .wrap(Wrap { trim: true })
-        .scroll((scroll_amount as u16, 0));
+            .block(Block::default().borders(Borders::ALL).title("Command history"))
+            .wrap(Wrap { trim: true })
+            .scroll((scroll_amount as u16, 0));
 
         f.render_widget(history_paragraph, top_chunks[1]);
 
@@ -251,10 +271,12 @@ impl App {
 
         // Bottom panel (command input)
         let input_lock = input.lock().unwrap();
-        let input_text = Text::from(vec![Line::from(vec![
-            Span::styled("> ", Style::default().fg(Color::Yellow)),
-            Span::raw(&*input_lock),
-        ])]);
+        let input_text = Text::from(vec![
+            Line::from(vec![
+                Span::styled("> ", Style::default().fg(Color::Yellow)),
+                Span::raw(&*input_lock),
+            ]),
+        ]);
 
         let input_paragraph = Paragraph::new(input_text)
             .block(Block::default().borders(Borders::ALL).title("Command input"));
