@@ -1,37 +1,132 @@
-use core::slice::SlicePattern;
-
 use alloy::{
-    consensus::BlobTransactionSidecar, eips::eip7702::SignedAuthorization, primitives::{Address, Bytes, FixedBytes, TxKind, U256}, providers::Provider, rpc::types::{AccessList, AccessListItem, TransactionInput, TransactionRequest}, signers::k256::{ecdsa::SigningKey, elliptic_curve::bigint::Random}
+    consensus::BlobTransactionSidecar, eips::{eip4844::BYTES_PER_BLOB, eip7702::SignedAuthorization}, primitives::{Address, Bytes, FixedBytes, TxKind, U256, U8}, providers::Provider, rpc::types::{AccessList, AccessListItem, Authorization, TransactionInput, TransactionRequest}, signers::k256::{ecdsa::SigningKey, elliptic_curve::bigint::Random}
 };
 use common::Backend;
-use mutator::Mutator;
 use rand::{random_bool, rngs::StdRng, Rng, RngCore, SeedableRng};
 
 pub trait RandomSender {
-    async fn create_random_tx(&self, sender: Address, key: SigningKey) -> Vec<u8> {
-        let backend = self.get_backend();
-        let mut rng = StdRng::seed_from_u64(self.seed());
+    async fn create_random_tx(&self, sender: Address, key: SigningKey) -> TransactionRequest {
+        let mut random = StdRng::seed_from_u64(self.seed());
 
-        let mut tx = TransactionRequest {
-            from: Some(sender),
-            to: Some(to),
-            gas_price,
-            max_fee_per_gas,
-            max_priority_fee_per_gas,
-            max_fee_per_blob_gas,
-            gas,
-            value,
-            input,
-            nonce: nonce_value,
-            chain_id,
-            access_list,
-            transaction_type,
-            blob_versioned_hashes,
-            sidecar,
-            authorization_list,
+        let to = if random_bool(0.5) {
+            if random_bool(0.5) {
+                TxKind::Create
+            } else {
+                TxKind::Call(self.random_to(&mut random))
+            }
+        } else {
+            if random_bool(0.5) {
+                TxKind::Create
+            } else {
+                TxKind::Call(Address::ZERO)
+            }
         };
 
-        todo!()
+        let gas_price = if random_bool(0.5) {
+            self.random_gas_price(&mut random)
+        } else {
+            self.get_gas_price().await
+        };
+
+        let max_fee_per_gas = if random_bool(0.5) {
+            self.random_max_fee_per_gas(&mut random)
+        } else {
+            0 // TODO
+        };
+
+        let max_priority_fee_per_gas = if random_bool(0.5) {
+            self.random_max_priority_fee_per_gas(&mut random)
+        } else {
+            self.get_max_priority_fee_per_gas().await
+        };
+
+        let max_fee_per_blob_gas = if random_bool(0.5) {
+            self.random_max_fee_per_blob_gas(&mut random)
+        } else {
+            0
+        };
+
+        let gas = if random_bool(0.5) {
+            self.random_gas(&mut random)
+        } else {
+            0 // TODO
+        };
+
+        let value = if random_bool(0.5) {
+            self.random_u256(&mut random)
+        } else {
+            self.get_value(sender).await
+        };
+
+        let input = if random_bool(0.5) {
+            self.random_input(&mut random)
+        } else {
+            TransactionInput::from(vec![])
+        };
+
+        let nonce = if random_bool(0.5) {
+            self.random_nonce(&mut random)
+        } else {
+            self.get_nonce(sender).await
+        };
+
+        let chain_id = if random_bool(0.5) {
+            self.random_chain_id(&mut random)
+        } else {
+            self.get_chain_id().await
+        };
+
+        let access_list = if random_bool(0.5) {
+            self.random_access_list(&mut random)
+        } else {
+            AccessList::from(vec![])
+        };
+
+        let transaction_type = if random_bool(0.5) {
+            self.random_transaction_type(&mut random)
+        } else {
+            0 // [nethoxa] should we default to this
+        };
+
+        let blob_versioned_hashes = if random_bool(0.5) {
+            self.random_blob_versioned_hashes(&mut random)
+        } else {
+            vec![]
+        };
+
+        let sidecar = if random_bool(0.5) {
+            self.random_sidecar(&mut random)
+        } else {
+            BlobTransactionSidecar::new(vec![], vec![], vec![])
+        };
+
+        let authorization_list = if random_bool(0.5) {
+            self.random_authorization_list(&mut random)
+        } else {
+            vec![]
+        };
+
+
+        let tx = TransactionRequest {
+            from: Some(sender),
+            to: Some(to),
+            gas_price: Some(gas_price),
+            max_fee_per_gas: Some(max_fee_per_gas),
+            max_priority_fee_per_gas: Some(max_priority_fee_per_gas),
+            max_fee_per_blob_gas: Some(max_fee_per_blob_gas),
+            gas: Some(gas),
+            value: Some(value),
+            input,
+            nonce: Some(nonce),
+            chain_id: Some(chain_id),
+            access_list: Some(access_list),
+            transaction_type: Some(transaction_type),
+            blob_versioned_hashes: Some(blob_versioned_hashes),
+            sidecar: Some(sidecar),
+            authorization_list: Some(authorization_list),
+        };
+        
+        tx
     }
 
     fn random_bytes(&self, length: usize, random: &mut StdRng) -> Bytes {
@@ -77,6 +172,10 @@ pub trait RandomSender {
         random.fill(&mut bytes);
 
         U256::from_be_slice(&bytes)
+    }
+
+    fn random_u8(&self, random: &mut StdRng) -> u8 {
+        random.random_range(0..=u8::MAX)
     }
 
     fn random_input(&self, random: &mut StdRng) -> TransactionInput {
@@ -148,16 +247,150 @@ pub trait RandomSender {
     }
 
     fn random_sidecar(&self, random: &mut StdRng) -> BlobTransactionSidecar {
-        
+        let same_length = random_bool(0.75); // [nethoxa] check as != length should not be the common case
+        if same_length {
+            let length = random.random_range(0..self.max_blob_sidecar_length());
+            let mut blobs = vec![];
+            let mut commitments = vec![];
+            let mut proofs = vec![];
+
+            for _ in 0..length {
+                let bytes = self.random_bytes(BYTES_PER_BLOB, random);
+                let mut array: [u8; BYTES_PER_BLOB] = [0u8; BYTES_PER_BLOB];
+    
+                for i in 0..bytes.len() {
+                    array[i] = bytes[i];
+                }
+    
+                let blob = FixedBytes::new(array);
+                blobs.push(blob);
+
+                let bytes = self.random_bytes(48, random);
+                let mut array: [u8; 48] = [0u8; 48];
+    
+                for i in 0..bytes.len() {
+                    array[i] = bytes[i];
+                }
+    
+                let commitment = FixedBytes::new(array);
+                commitments.push(commitment);
+
+                let bytes = self.random_bytes(48, random);
+                let mut array: [u8; 48] = [0u8; 48];
+    
+                for i in 0..bytes.len() {
+                    array[i] = bytes[i];
+                }
+    
+                let proof = FixedBytes::new(array);
+                proofs.push(proof);
+            }
+
+            BlobTransactionSidecar {
+                blobs,
+                commitments,
+                proofs,
+            }
+        } else {
+            let blobs_length = random.random_range(0..self.max_blob_sidecar_length());
+            let commitments_length = random.random_range(0..self.max_blob_sidecar_length());
+            let proofs_length = random.random_range(0..self.max_blob_sidecar_length());
+
+            let mut blobs = vec![];
+            for _ in 0..blobs_length {
+                let bytes = self.random_bytes(BYTES_PER_BLOB, random);
+                let mut array: [u8; BYTES_PER_BLOB] = [0u8; BYTES_PER_BLOB];
+    
+                for i in 0..bytes.len() {
+                    array[i] = bytes[i];
+                }
+    
+                let blob = FixedBytes::new(array);
+                blobs.push(blob);
+            }
+
+            let mut commitments = vec![];
+            for _ in 0..commitments_length {
+                let bytes = self.random_bytes(48, random);
+                let mut array: [u8; 48] = [0u8; 48];
+    
+                for i in 0..bytes.len() {
+                    array[i] = bytes[i];
+                }
+    
+                let commitment = FixedBytes::new(array);
+                commitments.push(commitment);
+            }
+
+            let mut proofs = vec![];
+            for _ in 0..proofs_length {
+                let bytes = self.random_bytes(48, random);
+                let mut array: [u8; 48] = [0u8; 48];
+    
+                for i in 0..bytes.len() {
+                    array[i] = bytes[i];
+                }
+    
+                let proof = FixedBytes::new(array);
+                proofs.push(proof);
+            }
+
+            BlobTransactionSidecar {
+                blobs,
+                commitments, 
+                proofs
+            }
+        }
     }
 
     fn random_authorization_list(&self, random: &mut StdRng) -> Vec<SignedAuthorization> {
+        let length = random.random_range(0..=self.max_authorization_list_length());
+        let mut authorizations = vec![];
 
+        for _ in 0..length {
+            let chain_id = self.random_u256(random);
+            let addr = self.random_address(random);
+            let nonce = self.random_nonce(random);
+
+            let auth = Authorization {
+                chain_id,
+                address: addr,
+                nonce
+            };
+
+            let y_parity = self.random_u8(random);
+            let r = self.random_u256(random);
+            let s = self.random_u256(random);
+
+            let signed = SignedAuthorization::new_unchecked(auth, y_parity, r, s);
+
+            authorizations.push(signed);
+        }
+
+        authorizations
     }
 
+    /// ------------------------------------
 
+    async fn get_gas_price(&self) -> u128 {
+        self.get_backend().get_gas_price().await.unwrap()
+    }
 
+    async fn get_max_priority_fee_per_gas(&self) -> u128 {
+        self.get_backend().get_max_priority_fee_per_gas().await.unwrap()
+    }
 
+    async fn get_nonce(&self, address: Address) -> u64 {
+        self.get_backend().get_account(address).await.unwrap().nonce
+    }
+
+    async fn get_chain_id(&self) -> u64 {
+        self.get_backend().get_chain_id().await.unwrap()
+    }
+
+    async fn get_value(&self, address: Address) -> U256 {
+        self.get_backend().get_account(address).await.unwrap().balance / self.max_balance_divisor()
+    }
 
     fn get_backend(&self) -> Backend;
     fn current_tx(&self) -> &[u8];
@@ -169,4 +402,7 @@ pub trait RandomSender {
     fn max_accessed_keys_length(&self) -> usize;
     fn max_transaction_type(&self) -> u8; // [nethoxa] parametrizable
     fn max_blob_versioned_hashes_length(&self) -> usize;
+    fn max_blob_sidecar_length(&self) -> usize;
+    fn max_authorization_list_length(&self) -> usize;
+    fn max_balance_divisor(&self) -> U256;
 }
