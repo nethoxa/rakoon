@@ -198,7 +198,7 @@ pub trait RandomSender {
         for _ in 0..length {
             let addr = self.random_address(random);
 
-            let keys_length = random.random_range(0..=self.max_accessed_keys_length())
+            let keys_length = random.random_range(0..=self.max_accessed_keys_length());
             let mut keys: Vec<FixedBytes<32>> = vec![];
 
             for _ in 0..keys_length {
