@@ -128,3 +128,5 @@ pub type Backend = alloy::providers::fillers::FillProvider<
 >;
 
 pub type PendingTransaction = alloy::providers::PendingTransactionBuilder<alloy::network::Ethereum>;
+
+pub const MAX_GAS_LIMIT: u64 = 30000000;

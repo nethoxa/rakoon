@@ -1,11 +1,15 @@
 use alloy::{
-    consensus::BlobTransactionSidecar, eips::{eip4844::BYTES_PER_BLOB, eip7702::SignedAuthorization}, primitives::{Address, Bytes, FixedBytes, TxKind, U256, U8}, providers::Provider, rpc::types::{AccessList, AccessListItem, Authorization, TransactionInput, TransactionRequest}, signers::k256::{ecdsa::SigningKey, elliptic_curve::bigint::Random}
+    consensus::BlobTransactionSidecar,
+    eips::{eip4844::BYTES_PER_BLOB, eip7702::SignedAuthorization},
+    primitives::{Address, Bytes, FixedBytes, TxKind, U256},
+    providers::Provider,
+    rpc::types::{AccessList, AccessListItem, Authorization, TransactionInput, TransactionRequest},
 };
 use common::Backend;
-use rand::{random_bool, rngs::StdRng, Rng, RngCore, SeedableRng};
+use rand::{Rng, RngCore, SeedableRng, random_bool, rngs::StdRng};
 
 pub trait RandomSender {
-    async fn create_random_tx(&self, sender: Address, key: SigningKey) -> TransactionRequest {
+    async fn create_random_tx(&self, sender: Address) -> TransactionRequest {
         let mut random = StdRng::seed_from_u64(self.seed());
 
         let to = if random_bool(0.5) {
@@ -15,11 +19,7 @@ pub trait RandomSender {
                 TxKind::Call(self.random_to(&mut random))
             }
         } else {
-            if random_bool(0.5) {
-                TxKind::Create
-            } else {
-                TxKind::Call(Address::ZERO)
-            }
+            if random_bool(0.5) { TxKind::Create } else { TxKind::Call(Address::ZERO) }
         };
 
         let gas_price = if random_bool(0.5) {
@@ -40,11 +40,8 @@ pub trait RandomSender {
             self.get_max_priority_fee_per_gas().await
         };
 
-        let max_fee_per_blob_gas = if random_bool(0.5) {
-            self.random_max_fee_per_blob_gas(&mut random)
-        } else {
-            0
-        };
+        let max_fee_per_blob_gas =
+            if random_bool(0.5) { self.random_max_fee_per_blob_gas(&mut random) } else { 0 };
 
         let gas = if random_bool(0.5) {
             self.random_gas(&mut random)
@@ -88,11 +85,8 @@ pub trait RandomSender {
             0 // [nethoxa] should we default to this
         };
 
-        let blob_versioned_hashes = if random_bool(0.5) {
-            self.random_blob_versioned_hashes(&mut random)
-        } else {
-            vec![]
-        };
+        let blob_versioned_hashes =
+            if random_bool(0.5) { self.random_blob_versioned_hashes(&mut random) } else { vec![] };
 
         let sidecar = if random_bool(0.5) {
             self.random_sidecar(&mut random)
@@ -100,14 +94,10 @@ pub trait RandomSender {
             BlobTransactionSidecar::new(vec![], vec![], vec![])
         };
 
-        let authorization_list = if random_bool(0.5) {
-            self.random_authorization_list(&mut random)
-        } else {
-            vec![]
-        };
+        let authorization_list =
+            if random_bool(0.5) { self.random_authorization_list(&mut random) } else { vec![] };
 
-
-        let tx = TransactionRequest {
+        TransactionRequest {
             from: Some(sender),
             to: Some(to),
             gas_price: Some(gas_price),
@@ -124,9 +114,7 @@ pub trait RandomSender {
             blob_versioned_hashes: Some(blob_versioned_hashes),
             sidecar: Some(sidecar),
             authorization_list: Some(authorization_list),
-        };
-        
-        tx
+        }
     }
 
     fn random_bytes(&self, length: usize, random: &mut StdRng) -> Bytes {
@@ -213,10 +201,7 @@ pub trait RandomSender {
                 keys.push(key);
             }
 
-            let item = AccessListItem {
-                address: addr,
-                storage_keys: keys
-            };
+            let item = AccessListItem { address: addr, storage_keys: keys };
             items.push(item);
         }
 
@@ -257,40 +242,36 @@ pub trait RandomSender {
             for _ in 0..length {
                 let bytes = self.random_bytes(BYTES_PER_BLOB, random);
                 let mut array: [u8; BYTES_PER_BLOB] = [0u8; BYTES_PER_BLOB];
-    
+
                 for i in 0..bytes.len() {
                     array[i] = bytes[i];
                 }
-    
+
                 let blob = FixedBytes::new(array);
                 blobs.push(blob);
 
                 let bytes = self.random_bytes(48, random);
                 let mut array: [u8; 48] = [0u8; 48];
-    
+
                 for i in 0..bytes.len() {
                     array[i] = bytes[i];
                 }
-    
+
                 let commitment = FixedBytes::new(array);
                 commitments.push(commitment);
 
                 let bytes = self.random_bytes(48, random);
                 let mut array: [u8; 48] = [0u8; 48];
-    
+
                 for i in 0..bytes.len() {
                     array[i] = bytes[i];
                 }
-    
+
                 let proof = FixedBytes::new(array);
                 proofs.push(proof);
             }
 
-            BlobTransactionSidecar {
-                blobs,
-                commitments,
-                proofs,
-            }
+            BlobTransactionSidecar { blobs, commitments, proofs }
         } else {
             let blobs_length = random.random_range(0..self.max_blob_sidecar_length());
             let commitments_length = random.random_range(0..self.max_blob_sidecar_length());
@@ -300,11 +281,11 @@ pub trait RandomSender {
             for _ in 0..blobs_length {
                 let bytes = self.random_bytes(BYTES_PER_BLOB, random);
                 let mut array: [u8; BYTES_PER_BLOB] = [0u8; BYTES_PER_BLOB];
-    
+
                 for i in 0..bytes.len() {
                     array[i] = bytes[i];
                 }
-    
+
                 let blob = FixedBytes::new(array);
                 blobs.push(blob);
             }
@@ -313,11 +294,11 @@ pub trait RandomSender {
             for _ in 0..commitments_length {
                 let bytes = self.random_bytes(48, random);
                 let mut array: [u8; 48] = [0u8; 48];
-    
+
                 for i in 0..bytes.len() {
                     array[i] = bytes[i];
                 }
-    
+
                 let commitment = FixedBytes::new(array);
                 commitments.push(commitment);
             }
@@ -326,20 +307,16 @@ pub trait RandomSender {
             for _ in 0..proofs_length {
                 let bytes = self.random_bytes(48, random);
                 let mut array: [u8; 48] = [0u8; 48];
-    
+
                 for i in 0..bytes.len() {
                     array[i] = bytes[i];
                 }
-    
+
                 let proof = FixedBytes::new(array);
                 proofs.push(proof);
             }
 
-            BlobTransactionSidecar {
-                blobs,
-                commitments, 
-                proofs
-            }
+            BlobTransactionSidecar { blobs, commitments, proofs }
         }
     }
 
@@ -352,11 +329,7 @@ pub trait RandomSender {
             let addr = self.random_address(random);
             let nonce = self.random_nonce(random);
 
-            let auth = Authorization {
-                chain_id,
-                address: addr,
-                nonce
-            };
+            let auth = Authorization { chain_id, address: addr, nonce };
 
             let y_parity = self.random_u8(random);
             let r = self.random_u256(random);
@@ -392,9 +365,8 @@ pub trait RandomSender {
         self.get_backend().get_account(address).await.unwrap().balance / self.max_balance_divisor()
     }
 
-    fn get_backend(&self) -> Backend;
-    fn current_tx(&self) -> &[u8];
-    fn current_tx_mut(&self) -> &mut [u8];
+    fn get_backend(&self) -> &Backend;
+    fn current_tx(&self) -> &TransactionRequest;
     fn seed(&self) -> u64;
     fn max_operations_per_mutation(&self) -> u64;
     fn max_input_length(&self) -> usize;

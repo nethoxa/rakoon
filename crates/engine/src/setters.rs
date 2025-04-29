@@ -1,15 +1,43 @@
 use crate::{Engine, EngineStatus, errors::EngineError};
-use alloy::signers::k256::{ecdsa::SigningKey, elliptic_curve::rand_core::OsRng};
+use alloy::{
+    primitives::U256,
+    rpc::types::TransactionRequest,
+    signers::k256::{ecdsa::SigningKey, elliptic_curve::rand_core::OsRng},
+};
 
 impl Engine {
-    pub fn default() -> Self {
+    pub fn new(
+        rpc: String,
+        max_operation_per_mutation: u64,
+        max_input_length: usize,
+        max_access_list_length: usize,
+        max_accessed_keys_length: usize,
+        max_transaction_type: u8,
+        max_blob_versioned_hashes_length: usize,
+        max_blob_sidecar_length: usize,
+        max_authorization_list_length: usize,
+        max_balance_divisor: U256,
+    ) -> Self {
         Self {
             status: EngineStatus::Stopped,
-            faucet: SigningKey::random(&mut OsRng),
+
+            sk: SigningKey::random(&mut OsRng),
             keys: Vec::new(),
             corpus: Vec::new(),
             seed: 0,
-            gas_limit: 0,
+
+            backend: todo!(),
+            current_tx: TransactionRequest::default(),
+            max_operations_per_mutation: todo!(),
+            max_input_length: todo!(),
+            max_access_list_length: todo!(),
+            max_accessed_keys_length: todo!(),
+            max_transaction_type: todo!(),
+            max_blob_versioned_hashes_length: todo!(),
+            max_blob_sidecar_length: todo!(),
+            max_authorization_list_length: todo!(),
+            max_balance_divisor: todo!(),
+
             random_txs: false,
             legacy_txs: false,
             legacy_creation_txs: false,
@@ -142,11 +170,6 @@ impl Engine {
 
     pub fn set_seed(&mut self, value: u64) -> &mut Self {
         self.seed = value;
-        self
-    }
-
-    pub fn set_gas_limit(&mut self, value: u64) -> &mut Self {
-        self.gas_limit = value;
         self
     }
 
