@@ -1,12 +1,17 @@
 pub mod errors;
+pub mod getters;
 pub mod setters;
 pub mod txs;
 
-use alloy::{primitives::U256, rpc::types::TransactionRequest, signers::k256::ecdsa::SigningKey};
+use alloy::{
+    primitives::U256,
+    rpc::types::TransactionRequest,
+    signers::k256::{ecdsa::SigningKey, elliptic_curve::rand_core::OsRng},
+};
 use common::Backend;
 use txs::random_sender::RandomSender;
 
-#[derive(PartialEq, Eq)]
+#[derive(PartialEq, Eq, Debug)]
 pub enum EngineStatus {
     Stopped,
     Running,
@@ -15,12 +20,12 @@ pub enum EngineStatus {
 pub struct Engine {
     status: EngineStatus,
 
-    sk: SigningKey,
+    sk: Option<SigningKey>,
     keys: Vec<SigningKey>,
     corpus: Vec<Vec<u8>>,
     seed: u64,
 
-    backend: Backend,
+    backend: Option<Backend>,
     current_tx: TransactionRequest,
     max_operations_per_mutation: u64,
     max_input_length: usize,
@@ -55,11 +60,53 @@ pub struct Engine {
     auth_blob_al_creation_txs: bool,
 }
 
-impl Engine {}
+impl Engine {
+    pub fn default() -> Engine {
+        Engine {
+            status: EngineStatus::Stopped,
+            sk: None,
+            keys: Vec::new(),
+            corpus: Vec::new(),
+            seed: 0,
+            backend: None,
+            current_tx: TransactionRequest::default(),
+            max_operations_per_mutation: 0,
+            max_input_length: 0,
+            max_access_list_length: 0,
+            max_accessed_keys_length: 0,
+            max_transaction_type: 0,
+            max_blob_versioned_hashes_length: 0,
+            max_blob_sidecar_length: 0,
+            max_authorization_list_length: 0,
+            max_balance_divisor: U256::from(0),
+            random_txs: false,
+            legacy_txs: false,
+            legacy_creation_txs: false,
+            empty_al_txs: false,
+            empty_al_creation_txs: false,
+            eip1559_txs: false,
+            eip1559_creation_txs: false,
+            eip1559_al_txs: false,
+            eip1559_al_creation_txs: false,
+            blob_txs: false,
+            blob_creation_txs: false,
+            blob_al_txs: false,
+            blob_al_creation_txs: false,
+            auth_txs: false,
+            auth_creation_txs: false,
+            auth_al_txs: false,
+            auth_al_creation_txs: false,
+            auth_blob_txs: false,
+            auth_blob_creation_txs: false,
+            auth_blob_al_txs: false,
+            auth_blob_al_creation_txs: false,
+        }
+    }
+}
 
 impl RandomSender for Engine {
     fn get_backend(&self) -> &Backend {
-        &self.backend
+        self.backend.as_ref().unwrap()
     }
 
     fn current_tx(&self) -> &TransactionRequest {

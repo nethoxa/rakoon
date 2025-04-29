@@ -9,6 +9,7 @@ crossterm = { workspace = true }
 ratatui = { workspace = true }
 tokio = { workspace = true }
 colored = { workspace = true }
+alloy = { workspace = true }
 
 engine = { path = "../engine" }
 common = { path = "../common" }

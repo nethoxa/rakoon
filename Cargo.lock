@@ -622,6 +622,7 @@ dependencies = [
 name = "app"
 version = "0.1.0"
 dependencies = [
+ "alloy",
  "colored",
  "common",
  "crossterm 0.29.0",

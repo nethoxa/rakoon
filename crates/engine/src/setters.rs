@@ -4,64 +4,9 @@ use alloy::{
     rpc::types::TransactionRequest,
     signers::k256::{ecdsa::SigningKey, elliptic_curve::rand_core::OsRng},
 };
+use common::Backend;
 
 impl Engine {
-    pub fn new(
-        rpc: String,
-        max_operation_per_mutation: u64,
-        max_input_length: usize,
-        max_access_list_length: usize,
-        max_accessed_keys_length: usize,
-        max_transaction_type: u8,
-        max_blob_versioned_hashes_length: usize,
-        max_blob_sidecar_length: usize,
-        max_authorization_list_length: usize,
-        max_balance_divisor: U256,
-    ) -> Self {
-        Self {
-            status: EngineStatus::Stopped,
-
-            sk: SigningKey::random(&mut OsRng),
-            keys: Vec::new(),
-            corpus: Vec::new(),
-            seed: 0,
-
-            backend: todo!(),
-            current_tx: TransactionRequest::default(),
-            max_operations_per_mutation: todo!(),
-            max_input_length: todo!(),
-            max_access_list_length: todo!(),
-            max_accessed_keys_length: todo!(),
-            max_transaction_type: todo!(),
-            max_blob_versioned_hashes_length: todo!(),
-            max_blob_sidecar_length: todo!(),
-            max_authorization_list_length: todo!(),
-            max_balance_divisor: todo!(),
-
-            random_txs: false,
-            legacy_txs: false,
-            legacy_creation_txs: false,
-            empty_al_txs: false,
-            empty_al_creation_txs: false,
-            eip1559_txs: false,
-            eip1559_creation_txs: false,
-            eip1559_al_txs: false,
-            eip1559_al_creation_txs: false,
-            blob_txs: false,
-            blob_creation_txs: false,
-            blob_al_txs: false,
-            blob_al_creation_txs: false,
-            auth_txs: false,
-            auth_creation_txs: false,
-            auth_al_txs: false,
-            auth_al_creation_txs: false,
-            auth_blob_txs: false,
-            auth_blob_creation_txs: false,
-            auth_blob_al_txs: false,
-            auth_blob_al_creation_txs: false,
-        }
-    }
-
     // Setters para los campos booleanos
     pub fn set_random_txs(&mut self, value: bool) -> &mut Self {
         self.random_txs = value;
@@ -170,6 +115,81 @@ impl Engine {
 
     pub fn set_seed(&mut self, value: u64) -> &mut Self {
         self.seed = value;
+        self
+    }
+
+    pub fn set_backend(&mut self, value: Option<Backend>) -> &mut Self {
+        self.backend = value;
+        self
+    }
+
+    pub fn set_current_tx(&mut self, value: TransactionRequest) -> &mut Self {
+        self.current_tx = value;
+        self
+    }
+
+    pub fn set_max_operations_per_mutation(&mut self, value: u64) -> &mut Self {
+        self.max_operations_per_mutation = value;
+        self
+    }
+
+    pub fn set_max_input_length(&mut self, value: usize) -> &mut Self {
+        self.max_input_length = value;
+        self
+    }
+
+    pub fn set_max_access_list_length(&mut self, value: usize) -> &mut Self {
+        self.max_access_list_length = value;
+        self
+    }
+
+    pub fn set_max_accessed_keys_length(&mut self, value: usize) -> &mut Self {
+        self.max_accessed_keys_length = value;
+        self
+    }
+
+    pub fn set_max_transaction_type(&mut self, value: u8) -> &mut Self {
+        self.max_transaction_type = value;
+        self
+    }
+
+    pub fn set_max_blob_versioned_hashes_length(&mut self, value: usize) -> &mut Self {
+        self.max_blob_versioned_hashes_length = value;
+        self
+    }
+
+    pub fn set_max_blob_sidecar_length(&mut self, value: usize) -> &mut Self {
+        self.max_blob_sidecar_length = value;
+        self
+    }
+
+    pub fn set_max_authorization_list_length(&mut self, value: usize) -> &mut Self {
+        self.max_authorization_list_length = value;
+        self
+    }
+
+    pub fn set_max_balance_divisor(&mut self, value: U256) -> &mut Self {
+        self.max_balance_divisor = value;
+        self
+    }
+
+    pub fn set_sk(&mut self, value: Option<SigningKey>) -> &mut Self {
+        self.sk = value;
+        self
+    }
+
+    pub fn set_keys(&mut self, value: Vec<SigningKey>) -> &mut Self {
+        self.keys = value;
+        self
+    }
+
+    pub fn set_corpus(&mut self, value: Vec<Vec<u8>>) -> &mut Self {
+        self.corpus = value;
+        self
+    }
+
+    pub fn set_status(&mut self, value: EngineStatus) -> &mut Self {
+        self.status = value;
         self
     }
 

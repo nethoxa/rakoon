@@ -1,4 +1,5 @@
 use colored::Colorize;
+use command_handler::CommandHandler;
 use crossterm::{
     event::{self, Event, KeyCode},
     execute,
@@ -18,6 +19,8 @@ use std::{
     sync::{Arc, Mutex},
     time::Duration,
 };
+pub mod command_handler;
+pub mod errors;
 
 pub struct App {
     engine: Engine,
@@ -72,75 +75,14 @@ impl App {
                             // Check if the engine is running, so that we don't execute anything if
                             // it's not running
                             if !self.engine.is_running() {
-                                match command.trim() {
-                                    "start" => match self.engine.start() {
-                                        Ok(output) => {
-                                            history.push((
-                                                command.clone(),
-                                                format!("[{}] {}", "+".bright_green(), output),
-                                            ));
-                                        }
-                                        Err(e) => {
-                                            history.push((
-                                                command.clone(),
-                                                format!("[{}] {}", "-".bright_red(), e),
-                                            ));
-                                        }
-                                    }, // [nethoxa] add fields here so that they are setters
-                                    "exit" => {
-                                        break;
-                                    }
-                                    _ => {
-                                        history.push((
-                                            command.clone(),
-                                            format!(
-                                                "[{}] {}",
-                                                "-".bright_red(),
-                                                EngineError::EngineNotRunning
-                                            ),
-                                        ));
-                                    }
-                                }
+                                if self.handle_command_not_running(&command, &mut history).is_err()
+                                {
+                                    break;
+                                };
                             } else {
-                                match command.trim() {
-                                    "start" => {
-                                        history.push((
-                                            command.clone(),
-                                            format!(
-                                                "[{}] {}",
-                                                "-".bright_red(),
-                                                "Engine already running"
-                                            ),
-                                        ));
-                                    }
-                                    "stop" => match self.engine.stop() {
-                                        Ok(output) => {
-                                            history.push((
-                                                command.clone(),
-                                                format!("[{}] {}", "+".bright_green(), output),
-                                            ));
-                                        }
-                                        Err(e) => {
-                                            history.push((
-                                                command.clone(),
-                                                format!("[{}] {}", "-".bright_red(), e),
-                                            ));
-                                        }
-                                    },
-                                    "exit" => {
-                                        break;
-                                    }
-                                    _ => {
-                                        history.push((
-                                            command.clone(),
-                                            format!(
-                                                "[{}] {}",
-                                                "-".bright_red(),
-                                                EngineError::InvalidCommand(command.clone())
-                                            ),
-                                        ));
-                                    }
-                                }
+                                if self.handle_command_running(&command, &mut history).is_err() {
+                                    break;
+                                };
                             }
 
                             // Reset the scroll position to the end, so that it keeps showing the
