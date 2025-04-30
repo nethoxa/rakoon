@@ -8,16 +8,12 @@ rust-version = "1.85"
 members = [
     "bin", 
     "crates/mutator", 
-    "crates/engine", 
     "crates/common", 
-    "crates/app"
-]
+    "crates/app", "crates/random", "crates/legacy", "crates/al", "crates/eip1559", "crates/eip7702", "crates/blob"]
 resolver = "3"
 
 [workspace.dependencies]
-engine = { path = "crates/engine" }
 mutator = { path = "crates/mutator" }
-spammer = { path = "crates/spammer" }
 common = { path = "crates/common" }
 
 crossterm = "0.29.0"

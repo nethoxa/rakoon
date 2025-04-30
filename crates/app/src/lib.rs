@@ -1,5 +1,6 @@
 use colored::Colorize;
 use command_handler::CommandHandler;
+use config::Config;
 use crossterm::{
     event::{self, Event, KeyCode},
     execute,
@@ -9,51 +10,43 @@ use engine::{Engine, errors::EngineError};
 use ratatui::{
     Frame, Terminal,
     backend::CrosstermBackend,
-    layout::{Constraint, Direction, Layout, Margin},
+    layout::{Constraint, Direction, Layout},
     style::{Color, Style},
     text::{Line, Span, Text},
-    widgets::{Block, Borders, Paragraph, Scrollbar, ScrollbarOrientation, Wrap},
+    widgets::{Block, Borders, Paragraph, Wrap},
 };
 use std::{
     io,
     sync::{Arc, Mutex},
     time::Duration,
 };
-pub mod command_handler;
-pub mod errors;
 
 pub struct App {
     engine: Engine,
+    output: Arc<Mutex<String>>,
 }
 
 impl App {
-    pub fn new() -> Self {
-        Self { engine: Engine::default() }
+    pub fn new(rpc: String) -> Self {
+        App {
+            engine: Engine::new(rpc),
+            output: Arc::new(Mutex::new(String::new())),
+        }
     }
 
     pub fn run(&mut self) -> Result<(), io::Error> {
-        // First, configure the terminal in raw mode. This is because we want to turn off all
-        // the things the terminal does automatically, so that we can handle it manually.
         enable_raw_mode()?;
         let mut stdout = io::stdout();
         execute!(stdout, EnterAlternateScreen)?;
         let backend = CrosstermBackend::new(stdout);
         let mut terminal = Terminal::new(backend)?;
 
-        // Some shared state
-        let info_text = Arc::new(Mutex::new(Vec::<String>::new()));
         let input = Arc::new(Mutex::new(String::new()));
-        let command_history = Arc::new(Mutex::new(Vec::<(String, String)>::new()));
-        let scroll_position = Arc::new(Mutex::new(0));
 
-        // Main loop
         loop {
-            terminal
-                .draw(|f| self.ui(f, &info_text, &input, &command_history, &scroll_position))?;
+            terminal.draw(|f| self.ui(f, &input))?;
 
-            // Handle events
             if event::poll(Duration::from_millis(100))? {
-                // [nethoxa] check this number
                 if let Event::Key(key) = event::read()? {
                     match key.code {
                         KeyCode::Char(c) => {
@@ -69,42 +62,10 @@ impl App {
                             let command = current_input.clone();
                             current_input.clear();
 
-                            // Add the command to the history
-                            let mut history = command_history.lock().unwrap();
-
-                            // Check if the engine is running, so that we don't execute anything if
-                            // it's not running
-                            if !self.engine.is_running() {
-                                if self.handle_command_not_running(&command, &mut history).is_err()
-                                {
-                                    break;
-                                };
-                            } else {
-                                if self.handle_command_running(&command, &mut history).is_err() {
-                                    break;
-                                };
-                            }
-
-                            // Reset the scroll position to the end, so that it keeps showing the
-                            // latest commands
-                            let mut scroll = scroll_position.lock().unwrap();
-                            *scroll = 0;
+                            // TODO
                         }
                         KeyCode::Esc => {
                             break;
-                        }
-                        KeyCode::Down => {
-                            let mut scroll = scroll_position.lock().unwrap();
-                            if *scroll > 0 {
-                                *scroll -= 1;
-                            }
-                        }
-                        KeyCode::Up => {
-                            let mut scroll = scroll_position.lock().unwrap();
-                            let history = command_history.lock().unwrap();
-                            if *scroll < history.len() {
-                                *scroll += 1;
-                            }
                         }
                         _ => {}
                     }
@@ -112,7 +73,6 @@ impl App {
             }
         }
 
-        // Restore terminal
         disable_raw_mode()?;
         execute!(terminal.backend_mut(), LeaveAlternateScreen)?;
         terminal.show_cursor()?;
@@ -120,15 +80,7 @@ impl App {
         Ok(())
     }
 
-    fn ui(
-        &mut self,
-        f: &mut Frame,
-        info: &Arc<Mutex<Vec<String>>>,
-        input: &Arc<Mutex<String>>,
-        command_history: &Arc<Mutex<Vec<(String, String)>>>,
-        scroll_position: &Arc<Mutex<usize>>,
-    ) {
-        // Divide the screen in two parts (upper and lower)
+    fn ui(&mut self, f: &mut Frame, input: &Arc<Mutex<String>>) {
         let main_chunks = Layout::default()
             .direction(Direction::Vertical)
             .constraints(
@@ -140,88 +92,46 @@ impl App {
             )
             .split(f.area());
 
-        // Divide the upper part in two horizontal parts
-        let top_chunks = Layout::default()
-            .direction(Direction::Horizontal)
-            .constraints(
-                [
-                    Constraint::Percentage(50),
-                    Constraint::Percentage(50),
-                ]
-                .as_ref(),
-            )
-            .split(main_chunks[0]);
-
-        // Left panel (fuzzer info)
-        let info_lock = info.lock().unwrap();
-        let info_text =
-            Text::from(info_lock.iter().map(|s| Line::from(s.clone())).collect::<Vec<Line>>());
-        let info_paragraph = Paragraph::new(info_text)
-            .block(Block::default().borders(Borders::ALL).title("Fuzzer info"))
-            .wrap(Wrap { trim: true });
-        f.render_widget(info_paragraph, top_chunks[0]);
-
-        // Right panel (command history)
-        let history_lock = command_history.lock().unwrap();
-        let scroll = *scroll_position.lock().unwrap();
-
-        let mut history_lines = Vec::new();
-
-        // Show commands from oldest (up) to newest (down)
-        for (cmd, result) in history_lock.iter() {
-            history_lines.push(Line::from(vec![
-                Span::styled("> ", Style::default().fg(Color::Yellow)),
-                Span::styled(cmd, Style::default().fg(Color::Green)),
-            ]));
-            history_lines.push(Line::from(vec![Span::raw(result)]));
-            history_lines.push(Line::from(vec![Span::raw("")]));
-        }
-
-        // Calculate the automatic scroll to keep the latest commands visible
-        let history_area = top_chunks[1].inner(Margin::new(1, 1));
-        let visible_lines = history_area.height as usize;
-        let total_lines = history_lines.len();
-
-        // Calculate the automatic scroll to keep the latest commands visible
-        let auto_scroll = total_lines.saturating_sub(visible_lines);
-
-        // Apply the manual scroll of the user (inverted)
-        let scroll_amount = if auto_scroll > scroll { auto_scroll - scroll } else { 0 };
-
-        let history_text = Text::from(history_lines);
-
-        let history_paragraph = Paragraph::new(history_text)
-            .block(Block::default().borders(Borders::ALL).title("Command history"))
-            .wrap(Wrap { trim: true })
-            .scroll((scroll_amount as u16, 0));
-
-        f.render_widget(history_paragraph, top_chunks[1]);
-
-        // Add the scrollbar
-        if total_lines > visible_lines {
-            let scrollbar = Scrollbar::default()
-                .orientation(ScrollbarOrientation::VerticalRight)
-                .begin_symbol(Some("↑"))
-                .end_symbol(Some("↓"));
-
-            f.render_stateful_widget(
-                scrollbar,
-                top_chunks[1].inner(Margin::new(1, 1)),
-                &mut ratatui::widgets::ScrollbarState::new(auto_scroll).position(scroll_amount),
-            );
-        }
-
-        // Bottom panel (command input)
-        let input_lock = input.lock().unwrap();
-        let input_text = Text::from(vec![
+        // Stats panel
+        let stats_text = Text::from(vec![
             Line::from(vec![
-                Span::styled("> ", Style::default().fg(Color::Yellow)),
-                Span::raw(&*input_lock),
+                Span::styled("Status: ", Style::default().fg(Color::Yellow)),
+                Span::styled(
+                    if self.engine.is_running() { "Running" } else { "Stopped" },
+                    Style::default().fg(Color::Green),
+                ),
+            ]),
+            Line::from(vec![
+                Span::styled("Transactions: ", Style::default().fg(Color::Yellow)),
+                Span::styled("0", Style::default().fg(Color::Green)),
+            ]),
+            Line::from(vec![
+                Span::styled("Errors: ", Style::default().fg(Color::Yellow)),
+                Span::styled("0", Style::default().fg(Color::Red)),
             ]),
         ]);
 
+        let stats_paragraph = Paragraph::new(stats_text)
+            .block(Block::default().borders(Borders::ALL).title("Fuzzer Stats"))
+            .wrap(Wrap { trim: true });
+        f.render_widget(stats_paragraph, main_chunks[0]);
+
+        // Command panel
+        let input_text = {
+            let input_lock = input.lock().unwrap();
+            let output_lock = self.output.lock().unwrap();
+            Text::from(vec![
+                Line::from(vec![
+                    Span::styled("> ", Style::default().fg(Color::Yellow)),
+                    Span::raw(input_lock.clone()),
+                ]),
+                Line::from(output_lock.clone()),
+            ])
+        };
+
         let input_paragraph = Paragraph::new(input_text)
-            .block(Block::default().borders(Borders::ALL).title("Command input"));
+            .block(Block::default().borders(Borders::ALL).title("Command Input"))
+            .wrap(Wrap { trim: true });
         f.render_widget(input_paragraph, main_chunks[1]);
     }
 }

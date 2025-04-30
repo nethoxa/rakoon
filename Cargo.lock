@@ -18,6 +18,10 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "512761e0bb2578dd7380c6baaa0f4ce03e84f95e960231d1dec8bf4d7d6e2627"
 
 [[package]]
+name = "al"
+version = "0.1.0"
+
+[[package]]
 name = "allocator-api2"
 version = "0.2.21"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -626,7 +630,6 @@ dependencies = [
  "colored",
  "common",
  "crossterm 0.29.0",
- "engine",
  "ratatui",
  "tokio",
 ]
@@ -888,6 +891,10 @@ dependencies = [
  "tap",
  "wyz",
 ]
+
+[[package]]
+name = "blob"
+version = "0.1.0"
 
 [[package]]
 name = "block-buffer"
@@ -1367,6 +1374,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "eip1559"
+version = "0.1.0"
+
+[[package]]
+name = "eip7702"
+version = "0.1.0"
+
+[[package]]
 name = "either"
 version = "1.15.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1393,16 +1408,6 @@ dependencies = [
  "serdect",
  "subtle",
  "zeroize",
-]
-
-[[package]]
-name = "engine"
-version = "0.1.0"
-dependencies = [
- "alloy",
- "common",
- "mutator",
- "rand 0.9.1",
 ]
 
 [[package]]
@@ -2124,6 +2129,10 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "bbd2bcb4c963f2ddae06a2efc7e9f3591312473c50c6685e1f298068316e66fe"
 
 [[package]]
+name = "legacy"
+version = "0.1.0"
+
+[[package]]
 name = "libc"
 version = "0.2.172"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2714,6 +2723,10 @@ checksum = "d25bf25ec5ae4a3f1b92f929810509a2f53d7dca2f50b794ff57e3face536c8f"
 dependencies = [
  "rand_core 0.6.4",
 ]
+
+[[package]]
+name = "random"
+version = "0.1.0"
 
 [[package]]
 name = "ratatui"
