@@ -1,12 +1,10 @@
 use colored::Colorize;
-use command_handler::CommandHandler;
-use config::Config;
 use crossterm::{
     event::{self, Event, KeyCode},
     execute,
     terminal::{EnterAlternateScreen, LeaveAlternateScreen, disable_raw_mode, enable_raw_mode},
 };
-use engine::{Engine, errors::EngineError};
+
 use ratatui::{
     Frame, Terminal,
     backend::CrosstermBackend,
@@ -22,14 +20,12 @@ use std::{
 };
 
 pub struct App {
-    engine: Engine,
     output: Arc<Mutex<String>>,
 }
 
 impl App {
-    pub fn new(rpc: String) -> Self {
+    pub fn new() -> Self {
         App {
-            engine: Engine::new(rpc),
             output: Arc::new(Mutex::new(String::new())),
         }
     }
@@ -96,10 +92,7 @@ impl App {
         let stats_text = Text::from(vec![
             Line::from(vec![
                 Span::styled("Status: ", Style::default().fg(Color::Yellow)),
-                Span::styled(
-                    if self.engine.is_running() { "Running" } else { "Stopped" },
-                    Style::default().fg(Color::Green),
-                ),
+                Span::styled("Stopped", Style::default().fg(Color::Green)),
             ]),
             Line::from(vec![
                 Span::styled("Transactions: ", Style::default().fg(Color::Yellow)),

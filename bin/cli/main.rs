@@ -1,159 +1,109 @@
 use app::App;
-use clap::{App as ClapApp, Arg};
+use clap::Parser;
+use tokio_util::sync::CancellationToken;
+use al::ALTransactionRunner;
+use blob::BlobTransactionRunner;
+use eip1559::EIP1559TransactionRunner;
+use eip7702::EIP7702TransactionRunner;
+use legacy::LegacyTransactionRunner;
+use random::RandomTransactionRunner;
+use alloy::{hex, signers::k256::ecdsa::SigningKey};
+#[derive(Parser)]
+#[command(name = "rakoon")]
+#[command(about = "Transaction fuzzer for the Ethereum protocol")]
+struct Cli {
+    #[arg(long, help = "RPC URL to send transactions to", required = true)]
+    rpc: String,
+    #[arg(long, help = "Faucet key", required = true)]
+    sk: String,
+    #[arg(long, help = "Path to the kurtosis network configuration file")]
+    config: String,
+    #[arg(long, help = "Seed for the random number generator")]
+    seed: u64,
+    #[arg(long, help = "Enable random transaction fuzzing")]
+    random: bool,
+    #[arg(long, help = "Enable legacy transaction fuzzing")]
+    legacy: bool,
+    #[arg(long, help = "Enable access list transaction fuzzing")]
+    al: bool,
+    #[arg(long, help = "Enable blob transaction fuzzing")]
+    blob: bool,
+    #[arg(long, help = "Enable EIP-1559 transaction fuzzing")]
+    eip1559: bool,
+    #[arg(long, help = "Enable EIP-7702 transaction fuzzing")]
+    eip7702: bool,
+}
 
-fn main() {
-    let matches = ClapApp::new("Ethereum Fuzzer")
-        .version("1.0")
-        .author("nethoxa")
-        .about("Transaction fuzzer for the Ethereum protocol")
-        .arg(
-            Arg::with_name("rpc")
-                .long("rpc")
-                .help("RPC URL to send transactions to (required)")
-                .takes_value(true)
-                .required(true),
-        )
-        .arg(
-            Arg::with_name("sk")
-                .long("sk")
-                .help("Faucet key (required)")
-                .takes_value(true)
-                .required(true),
-        )
-        .arg(
-            Arg::with_name("seed")
-                .long("seed")
-                .help("Seed for random generation")
-                .takes_value(true),
-        )
-        .arg(
-            Arg::with_name("random")
-                .long("random")
-                .short("r")
-                .help("Enable random transaction fuzzing")
-                .takes_value(false),
-        )
-        .arg(
-            Arg::with_name("legacy")
-                .long("legacy")
-                .short("l")
-                .help("Enable legacy transaction fuzzing")
-                .takes_value(false),
-        )
-        .arg(
-            Arg::with_name("access-list")
-                .long("access-list")
-                .short("a")
-                .help("Enable access list transaction fuzzing")
-                .takes_value(false),
-        )
-        .arg(
-            Arg::with_name("blob")
-                .long("blob")
-                .short("b")
-                .help("Enable blob transaction fuzzing")
-                .takes_value(false),
-        )
-        .arg(
-            Arg::with_name("eip1559")
-                .long("eip1559")
-                .short("1559")
-                .help("Enable EIP-1559 transaction fuzzing")
-                .takes_value(false),
-        )
-        .arg(
-            Arg::with_name("eip7702")
-                .long("eip7702")
-                .short("7702")
-                .help("Enable EIP-7702 transaction fuzzing")
-                .takes_value(false),
-        )
-        .get_matches();
+#[tokio::main]
+async fn main() {
+    let cli = Cli::parse();
+    
+    let rpc_url = cli.rpc;
+    let sk = SigningKey::from_slice(hex::decode(cli.sk).unwrap().as_slice()).unwrap();
+    let config = cli.config; // [nethoxa] TODO
+    let seed = cli.seed;
 
-    // Create the engine first
-    let mut engine = Engine::new(matches.value_of("rpc").unwrap().to_string());
+    // Check if any transaction type is enabled
+    let random_enabled = cli.random;
+    let legacy_enabled = cli.legacy;
+    let al_enabled = cli.al;
+    let blob_enabled = cli.blob;
+    let eip1559_enabled = cli.eip1559;
+    let eip7702_enabled = cli.eip7702;
+
+    let token = CancellationToken::new();
+    let mut handles = vec![];
     
-    // Set master signing key
-    let master_key = matches.value_of("master-key").unwrap();
-    engine.set_master_key(master_key);
-    
-    // Set optional parameters
-    if let Some(seed) = matches.value_of("seed") {
-        if let Ok(seed_value) = seed.parse::<u64>() {
-            engine.seed = seed_value;
-        }
-    }
-    
-    if let Some(corpus_path) = matches.value_of("corpus") {
-        engine.load_corpus(corpus_path);
-    }
-    
-    if let Some(ops) = matches.value_of("ops") {
-        if let Ok(ops_value) = ops.parse::<u64>() {
-            engine.max_operations_per_mutation = ops_value;
-        }
-    }
-    
-    // Configure fuzzer based on flags
-    if matches.is_present("random") {
-        engine.random_txs = true;
-    }
-    if matches.is_present("legacy") {
-        engine.legacy_txs = true;
-        engine.legacy_creation_txs = true;
-    }
-    if matches.is_present("access-list") {
-        engine.empty_al_txs = true;
-        engine.empty_al_creation_txs = true;
-    }
-    if matches.is_present("blob") {
-        engine.blob_txs = true;
-        engine.blob_creation_txs = true;
-        engine.blob_al_txs = true;
-        engine.blob_al_creation_txs = true;
-    }
-    if matches.is_present("eip1559") {
-        engine.eip1559_txs = true;
-        engine.eip1559_creation_txs = true;
-        engine.eip1559_al_txs = true;
-        engine.eip1559_al_creation_txs = true;
-    }
-    if matches.is_present("eip7702") {
-        engine.auth_txs = true;
-        engine.auth_creation_txs = true;
-        engine.auth_al_txs = true;
-        engine.auth_al_creation_txs = true;
-        engine.auth_blob_txs = true;
-        engine.auth_blob_creation_txs = true;
-        engine.auth_blob_al_txs = true;
-        engine.auth_blob_al_creation_txs = true;
-    }
-    if matches.is_present("mix") {
-        // Enable all transaction types
-        engine.random_txs = true;
-        engine.legacy_txs = true;
-        engine.legacy_creation_txs = true;
-        engine.empty_al_txs = true;
-        engine.empty_al_creation_txs = true;
-        engine.eip1559_txs = true;
-        engine.eip1559_creation_txs = true;
-        engine.eip1559_al_txs = true;
-        engine.eip1559_al_creation_txs = true;
-        engine.blob_txs = true;
-        engine.blob_creation_txs = true;
-        engine.blob_al_txs = true;
-        engine.blob_al_creation_txs = true;
-        engine.auth_txs = true;
-        engine.auth_creation_txs = true;
-        engine.auth_al_txs = true;
-        engine.auth_al_creation_txs = true;
-        engine.auth_blob_txs = true;
-        engine.auth_blob_creation_txs = true;
-        engine.auth_blob_al_txs = true;
-        engine.auth_blob_al_creation_txs = true;
+    if random_enabled {
+        let runner = RandomTransactionRunner::new(rpc_url.clone(), sk.clone(), seed);
+        let random_token = token.clone();
+        handles.push(tokio::spawn(async move {
+            runner.run(random_token).await.unwrap();
+        }));
     }
 
-    // Create the app with the configured engine
-    let mut app = App::new(engine);
-    let _ = app.run();
+    if legacy_enabled {
+        let runner = LegacyTransactionRunner::new(rpc_url.clone(), sk.clone(), seed);
+        let legacy_token = token.clone();
+        handles.push(tokio::spawn(async move {
+            runner.run(legacy_token).await.unwrap();
+        }));
+    }
+
+    if al_enabled {
+        let runner = ALTransactionRunner::new(rpc_url.clone(), sk.clone(), seed);
+        let al_token = token.clone();
+        handles.push(tokio::spawn(async move {
+            runner.run(al_token).await.unwrap();
+        }));
+    }
+
+    if blob_enabled {
+        let runner = BlobTransactionRunner::new(rpc_url.clone(), sk.clone(), seed);
+        let blob_token = token.clone();
+        handles.push(tokio::spawn(async move {
+            runner.run(blob_token).await.unwrap();
+        }));
+    }
+
+    if eip1559_enabled {
+        let runner = EIP1559TransactionRunner::new(rpc_url.clone(), sk.clone(), seed);
+        let eip1559_token = token.clone();
+        handles.push(tokio::spawn(async move {
+            runner.run(eip1559_token).await.unwrap();
+        }));
+    }
+
+    if eip7702_enabled {
+        let runner = EIP7702TransactionRunner::new(rpc_url.clone(), sk.clone(), seed);
+        let eip7702_token = token.clone();
+        handles.push(tokio::spawn(async move {
+            runner.run(eip7702_token).await.unwrap();
+        }));
+    }
+
+    // Wait for all tasks to complete
+    for handle in handles {
+        let _ = handle.await;
+    }
 }

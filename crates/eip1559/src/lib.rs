@@ -1,14 +1,19 @@
-pub fn add(left: u64, right: u64) -> u64 {
-    left + right
+use common::errors::Error;
+use tokio_util::sync::CancellationToken;
+use alloy::signers::k256::ecdsa::SigningKey;
+
+pub struct EIP1559TransactionRunner {
+    rpc_url: String,
+    sk: SigningKey,
+    seed: u64,
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
+impl EIP1559TransactionRunner {
+    pub fn new(rpc_url: String, sk: SigningKey, seed: u64) -> Self {
+        Self { rpc_url, sk, seed }
+    }
 
-    #[test]
-    fn it_works() {
-        let result = add(2, 2);
-        assert_eq!(result, 4);
+    pub async fn run(&self, token: CancellationToken) -> Result<(), Error> {
+        Ok(())
     }
 }

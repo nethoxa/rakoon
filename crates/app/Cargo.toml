@@ -12,3 +12,9 @@ colored = { workspace = true }
 alloy = { workspace = true }
 
 common = { path = "../common" }
+eip7702 = { path = "../eip7702" }
+random = { path = "../random" }
+legacy = { path = "../legacy" }
+al = { path = "../al" }
+blob = { path = "../blob" }
+eip1559 = { path = "../eip1559" }
