@@ -8,6 +8,13 @@ use eip7702::EIP7702TransactionRunner;
 use legacy::LegacyTransactionRunner;
 use random::RandomTransactionRunner;
 use alloy::{hex, signers::k256::ecdsa::SigningKey};
+
+fn main() {
+    let mut app = App::new();
+    app.run();
+}
+
+/*
 #[derive(Parser)]
 #[command(name = "rakoon")]
 #[command(about = "Transaction fuzzer for the Ethereum protocol")]
@@ -107,3 +114,4 @@ async fn main() {
         let _ = handle.await;
     }
 }
+*/
