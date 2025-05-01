@@ -5,11 +5,18 @@ use alloy::{
     eips::{eip4844::BYTES_PER_BLOB, eip7702::SignedAuthorization},
     primitives::{Address, Bytes, FixedBytes, TxKind, U256},
     providers::{Provider, ProviderBuilder},
-    rpc::types::{AccessList, AccessListItem, Authorization, TransactionInput, TransactionRequest}, signers::{k256::ecdsa::SigningKey, local::PrivateKeySigner},
+    rpc::types::{AccessList, AccessListItem, Authorization, TransactionInput, TransactionRequest},
+    signers::{k256::ecdsa::SigningKey, local::PrivateKeySigner},
 };
-use common::constants::{MAX_ACCESS_LIST_LENGTH, MAX_ACCESSED_KEYS_LENGTH, MAX_AUTHORIZATION_LIST_LENGTH, MAX_BLOB_SIDECAR_LENGTH, MAX_BLOB_VERSIONED_HASHES_LENGTH, MAX_INPUT_LENGTH, MAX_TRANSACTION_TYPE};
+use common::{
+    constants::{
+        MAX_ACCESS_LIST_LENGTH, MAX_ACCESSED_KEYS_LENGTH, MAX_AUTHORIZATION_LIST_LENGTH,
+        MAX_BLOB_SIDECAR_LENGTH, MAX_BLOB_VERSIONED_HASHES_LENGTH, MAX_INPUT_LENGTH,
+        MAX_TRANSACTION_TYPE,
+    },
+    errors::Error,
+};
 use rand::{Rng, RngCore, SeedableRng, random_bool, rngs::StdRng};
-use common::errors::Error;
 use tokio_util::sync::CancellationToken;
 
 pub struct RandomTransactionRunner {
@@ -145,7 +152,7 @@ impl RandomTransactionRunner {
                 } => {}
             }
         }
-        
+
         Ok(())
     }
 

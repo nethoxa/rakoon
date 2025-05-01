@@ -1,5 +1,5 @@
-pub mod errors;
 pub mod constants;
+pub mod errors;
 
 pub type Backend = alloy::providers::fillers::FillProvider<
     alloy::providers::fillers::JoinFill<
@@ -22,4 +22,3 @@ pub type Backend = alloy::providers::fillers::FillProvider<
 >;
 
 pub type PendingTransaction = alloy::providers::PendingTransactionBuilder<alloy::network::Ethereum>;
-

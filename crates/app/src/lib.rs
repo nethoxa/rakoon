@@ -1,17 +1,20 @@
-use colored::Colorize;
+use config::Config;
 use crossterm::{
     event::{self, Event, KeyCode},
     execute,
     terminal::{EnterAlternateScreen, LeaveAlternateScreen, disable_raw_mode, enable_raw_mode},
 };
 
+use errors::AppStatus;
 use ratatui::{
     Frame, Terminal,
     backend::CrosstermBackend,
-    layout::{Constraint, Direction, Layout, Rect, Alignment},
+    layout::{Alignment, Constraint, Direction, Layout, Rect},
     style::{Color, Style},
     text::{Line, Span, Text},
-    widgets::{Block, Borders, Paragraph, Wrap, List, ListItem, ListState, ScrollbarState, Scrollbar},
+    widgets::{
+        Block, Borders, List, ListItem, ListState, Paragraph, Scrollbar, ScrollbarState, Wrap,
+    },
 };
 use std::{
     io,
@@ -19,32 +22,44 @@ use std::{
     time::Duration,
 };
 pub mod handler;
+pub mod manager;
+pub mod config;
+pub mod errors;
 
 pub struct App {
     status: String,
     output: Arc<Mutex<String>>,
     command_history: Vec<String>,
     output_history: Vec<String>,
+    error_history: Vec<bool>, // Track if each output is an error
     history_scroll_state: ScrollbarState,
     history_list_state: ListState,
-    history_index: Option<usize>,
     scroll_offset: usize,
+    left_panel_width: u16, // Store the width of the left panel
+    input_height: u16,     // Store the dynamic height of the input area
+
+    config: Config
 }
 
 impl App {
-    pub fn new() -> Self {
+    pub fn new(
+        config: Config
+    ) -> Self {
         let mut list_state = ListState::default();
         list_state.select(Some(0));
-        
+
         App {
             status: "stopped".to_string(),
             output: Arc::new(Mutex::new(String::new())),
             command_history: Vec::new(),
             output_history: Vec::new(),
+            error_history: Vec::new(), // Initialize error history
             history_scroll_state: ScrollbarState::default(),
             history_list_state: list_state,
-            history_index: None,
             scroll_offset: 0,
+            left_panel_width: 70, // Default width percentage
+            input_height: 3,      // Default height (1 for content + 2 for borders)
+            config,
         }
     }
 
@@ -66,8 +81,6 @@ impl App {
                         KeyCode::Char(c) => {
                             let mut current_input = input.lock().unwrap();
                             current_input.push(c);
-                            // Reset history navigation when typing
-                            self.history_index = None;
                         }
                         KeyCode::Backspace => {
                             let mut current_input = input.lock().unwrap();
@@ -85,19 +98,19 @@ impl App {
 
                             // Store current output before handling command
                             let result = self.handle_command(command);
-                            
+
                             // Add output to history
                             let output = self.output.lock().unwrap().clone();
                             if !output.is_empty() {
-                                self.output_history.push(output);
+                                self.output_history.push(output.clone());
                             }
 
-                            // Reset history navigation
-                            self.history_index = None;
-                            
+                            // Reset input height to default
+                            self.input_height = 3;
+
                             // Update list state to scroll to the bottom
-                            let total_items = self.command_history.len() + 
-                                self.output_history.iter().filter(|o| !o.is_empty()).count();
+                            let total_items = self.command_history.len()
+                                + self.output_history.iter().filter(|o| !o.is_empty()).count();
                             if total_items > 0 {
                                 self.history_list_state.select(Some(total_items - 1));
                                 // Ensure we're scrolled to the bottom
@@ -105,28 +118,19 @@ impl App {
                             }
 
                             if result.is_err() {
-                                break;
+                                if result.unwrap_err() == AppStatus::Exit {
+                                    break;
+                                }
+
+                                self.error_history.push(true);
+                            } else {
+                                self.error_history.push(false);
                             }
                         }
                         KeyCode::Esc => {
                             break;
                         }
                         KeyCode::Up => {
-                            // Handle command history navigation
-                            if !self.command_history.is_empty() {
-                                let new_index = match self.history_index {
-                                    Some(idx) if idx > 0 => Some(idx - 1),
-                                    None => Some(self.command_history.len() - 1),
-                                    _ => self.history_index,
-                                };
-                                
-                                if let Some(idx) = new_index {
-                                    let mut current_input = input.lock().unwrap();
-                                    *current_input = self.command_history[idx].clone();
-                                    self.history_index = new_index;
-                                }
-                            }
-                            
                             // Scroll history up
                             if self.scroll_offset > 0 {
                                 self.scroll_offset -= 1;
@@ -138,30 +142,9 @@ impl App {
                             }
                         }
                         KeyCode::Down => {
-                            // Handle command history navigation
-                            if !self.command_history.is_empty() {
-                                if let Some(idx) = self.history_index {
-                                    let new_index = if idx < self.command_history.len() - 1 {
-                                        Some(idx + 1)
-                                    } else {
-                                        None
-                                    };
-                                    
-                                    if let Some(idx) = new_index {
-                                        let mut current_input = input.lock().unwrap();
-                                        *current_input = self.command_history[idx].clone();
-                                    } else {
-                                        let mut current_input = input.lock().unwrap();
-                                        current_input.clear();
-                                    }
-                                    
-                                    self.history_index = new_index;
-                                }
-                            }
-                            
                             // Scroll history down
-                            let total_items = self.command_history.len() + 
-                                self.output_history.iter().filter(|o| !o.is_empty()).count();
+                            let total_items = self.command_history.len()
+                                + self.output_history.iter().filter(|o| !o.is_empty()).count();
                             if self.scroll_offset < total_items.saturating_sub(1) {
                                 self.scroll_offset += 1;
                                 if let Some(selected) = self.history_list_state.selected() {
@@ -169,6 +152,18 @@ impl App {
                                         self.history_list_state.select(Some(selected + 1));
                                     }
                                 }
+                            }
+                        }
+                        KeyCode::Left => {
+                            // Decrease left panel width (minimum 20%)
+                            if self.left_panel_width > 20 {
+                                self.left_panel_width -= 5;
+                            }
+                        }
+                        KeyCode::Right => {
+                            // Increase left panel width (maximum 70%)
+                            if self.left_panel_width < 70 {
+                                self.left_panel_width += 5;
                             }
                         }
                         KeyCode::PageUp => {
@@ -180,10 +175,11 @@ impl App {
                         }
                         KeyCode::PageDown => {
                             // Scroll history down by multiple lines
-                            let total_items = self.command_history.len() + 
-                                self.output_history.iter().filter(|o| !o.is_empty()).count();
+                            let total_items = self.command_history.len()
+                                + self.output_history.iter().filter(|o| !o.is_empty()).count();
                             if self.scroll_offset < total_items.saturating_sub(1) {
-                                self.scroll_offset = (self.scroll_offset + 5).min(total_items.saturating_sub(1));
+                                self.scroll_offset =
+                                    (self.scroll_offset + 5).min(total_items.saturating_sub(1));
                                 self.history_list_state.select(Some(self.scroll_offset));
                             }
                         }
@@ -201,13 +197,13 @@ impl App {
     }
 
     fn ui(&mut self, f: &mut Frame, input: &Arc<Mutex<String>>) {
-        // First split the screen into left and right panels
+        // First split the screen into left and right panels using the stored width
         let horizontal_chunks = Layout::default()
             .direction(Direction::Horizontal)
             .constraints(
                 [
-                    Constraint::Percentage(70),
-                    Constraint::Percentage(30),
+                    Constraint::Percentage(self.left_panel_width),
+                    Constraint::Percentage(100 - self.left_panel_width),
                 ]
                 .as_ref(),
             )
@@ -219,7 +215,7 @@ impl App {
             .constraints(
                 [
                     Constraint::Min(0),
-                    Constraint::Length(3), // Fixed height for input window (1 for content + 2 for borders)
+                    Constraint::Length(self.input_height), // Dynamic height for input window
                 ]
                 .as_ref(),
             )
@@ -229,11 +225,7 @@ impl App {
         let stats_area = left_chunks[0];
 
         // Set status color based on status value
-        let status_color = if self.status == "running" {
-            Color::Green
-        } else {
-            Color::Red
-        };
+        let status_color = if self.status == "running" { Color::Green } else { Color::Red };
 
         let mut stats_lines = vec![
             Line::from(vec![
@@ -255,14 +247,14 @@ impl App {
         // Calculate the height of the stats text to center it vertically
         let stats_height = stats_text.height() as u16;
         let vertical_padding = (stats_area.height.saturating_sub(2 + stats_height)) / 2; // -2 for borders
-        
+
         // Create a block with empty lines before the content to center it vertically
         let mut centered_lines = Vec::new();
         for _ in 0..vertical_padding {
             centered_lines.push(Line::from(""));
         }
         centered_lines.extend(stats_text.lines.clone());
-        
+
         let stats_paragraph = Paragraph::new(Text::from(centered_lines))
             .block(Block::default().borders(Borders::ALL).title("Fuzzer Stats"))
             .alignment(Alignment::Center) // Center horizontally
@@ -281,18 +273,15 @@ impl App {
         };
 
         let input_paragraph = Paragraph::new(input_text)
-            .block(Block::default().borders(Borders::ALL).title("Command Input"))
-            .wrap(Wrap { trim: true });
+            .block(Block::default().borders(Borders::ALL).title("Command Input"));
         f.render_widget(&input_paragraph, left_chunks[1]);
 
         // History panel on the right
-        let history_block = Block::default()
-            .borders(Borders::ALL)
-            .title("Command History");
-        
+        let history_block = Block::default().borders(Borders::ALL).title("Command History");
+
         let history_area = horizontal_chunks[1];
         f.render_widget(history_block, history_area);
-        
+
         // Create inner area for the history content
         let history_inner_area = Rect {
             x: history_area.x + 1,
@@ -305,68 +294,107 @@ impl App {
             // Create list items for history
             let mut history_items = Vec::new();
             for (i, cmd) in self.command_history.iter().enumerate() {
-                history_items.push(ListItem::new(Line::from(vec![
-                    Span::styled(format!("> {}", cmd), Style::default().fg(Color::Yellow)),
-                ])));
-                
+                // Create a wrapped command line with proper indentation
+                let available_width = history_inner_area.width.saturating_sub(3); // Subtract prefix width "> "
+                let mut cmd_lines = Vec::new();
+                let mut remaining = cmd.as_str();
+
+                // First line with the command prefix
+                let first_line_len = available_width.min(remaining.len() as u16);
+                let (first_part, rest) = remaining.split_at(first_line_len as usize);
+                cmd_lines.push(Line::from(vec![
+                    Span::styled(format!("> {}", first_part), Style::default().fg(Color::Yellow)),
+                ]));
+                remaining = rest;
+
+                // Subsequent lines with proper indentation if command is long
+                while !remaining.is_empty() {
+                    let line_len = available_width.min(remaining.len() as u16);
+                    let (part, rest) = remaining.split_at(line_len as usize);
+                    cmd_lines.push(Line::from(vec![
+                        Span::styled(format!("  {}", part), Style::default().fg(Color::Yellow)),
+                    ]));
+                    remaining = rest;
+                }
+
+                // Add all command lines to history items
+                for line in cmd_lines {
+                    history_items.push(ListItem::new(line));
+                }
+
                 if i < self.output_history.len() && !self.output_history[i].is_empty() {
                     let output_text = &self.output_history[i];
-                    let is_error = output_text == "invalid command";
-                    
-                    // Create styled output text
-                    let output_span = if is_error {
-                        Span::styled(output_text, Style::default().fg(Color::Red))
-                    } else {
-                        Span::styled(output_text, Style::default().fg(Color::White))
-                    };
-                    
+                    // Use the error_history to determine if this is an error
+                    let is_error = self.error_history[i];
+
                     // Create styled icon
                     let icon_span = if is_error {
                         Span::styled("-", Style::default().fg(Color::Red))
                     } else {
                         Span::styled("+", Style::default().fg(Color::Green))
                     };
-                    
+
+                    // Wrap output text with proper indentation
+                    let output_color = if is_error { Color::Red } else { Color::White };
+                    let mut output_remaining = output_text.as_str();
+
+                    // First line of output with icon
+                    let first_output_len =
+                        available_width.saturating_sub(5).min(output_remaining.len() as u16); // [+]  prefix
+                    let (first_output, rest_output) =
+                        output_remaining.split_at(first_output_len as usize);
                     history_items.push(ListItem::new(Line::from(vec![
                         Span::raw("  ["),
-                        icon_span,
+                        icon_span.clone(),
                         Span::raw("] "),
-                        output_span
+                        Span::styled(first_output, Style::default().fg(output_color)),
                     ])));
+                    output_remaining = rest_output;
+
+                    // Subsequent lines of output with proper indentation
+                    while !output_remaining.is_empty() {
+                        let line_len =
+                            available_width.saturating_sub(5).min(output_remaining.len() as u16);
+                        let (part, rest) = output_remaining.split_at(line_len as usize);
+                        history_items.push(ListItem::new(Line::from(vec![
+                            Span::raw("      "), // Align with text after icon
+                            Span::styled(part, Style::default().fg(output_color)),
+                        ])));
+                        output_remaining = rest;
+                    }
                 }
             }
 
             // Create and render the list with auto-scroll
-            let history_list = List::new(history_items)
-                .highlight_style(Style::default().bg(Color::DarkGray));
-            
+            let history_list =
+                List::new(history_items).highlight_style(Style::default().bg(Color::DarkGray));
+
             // Update scrollbar state
-            let total_items = self.command_history.len() + 
-                self.output_history.iter().filter(|o| !o.is_empty()).count();
-            
+            let total_items = self.command_history.len()
+                + self.output_history.iter().filter(|o| !o.is_empty()).count();
+
             // Make sure we have a valid selection
             if self.history_list_state.selected().is_none() && total_items > 0 {
                 self.history_list_state.select(Some(self.scroll_offset));
             }
-            
+
             // Update scrollbar state with current position
-            self.history_scroll_state = ScrollbarState::default()
-                .content_length(total_items)
-                .position(self.scroll_offset);
-            
-            f.render_stateful_widget(history_list, history_inner_area, &mut self.history_list_state);
-            
+            self.history_scroll_state =
+                ScrollbarState::default().content_length(total_items).position(self.scroll_offset);
+
+            f.render_stateful_widget(
+                history_list,
+                history_inner_area,
+                &mut self.history_list_state,
+            );
+
             // Render scrollbar
             let scrollbar = Scrollbar::default()
                 .orientation(ratatui::widgets::ScrollbarOrientation::VerticalRight)
                 .begin_symbol(Some("↑"))
                 .end_symbol(Some("↓"));
-                
-            f.render_stateful_widget(
-                scrollbar,
-                history_inner_area,
-                &mut self.history_scroll_state,
-            );
+
+            f.render_stateful_widget(scrollbar, history_inner_area, &mut self.history_scroll_state);
         }
     }
 }

@@ -1,6 +1,6 @@
+use alloy::signers::k256::ecdsa::SigningKey;
 use common::errors::Error;
 use tokio_util::sync::CancellationToken;
-use alloy::signers::k256::ecdsa::SigningKey;
 
 pub struct EIP1559TransactionRunner {
     rpc_url: String,
