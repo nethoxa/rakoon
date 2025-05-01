@@ -8,7 +8,7 @@ use crossterm::{
 use ratatui::{
     Frame, Terminal,
     backend::CrosstermBackend,
-    layout::{Constraint, Direction, Layout, Rect},
+    layout::{Constraint, Direction, Layout, Rect, Alignment},
     style::{Color, Style},
     text::{Line, Span, Text},
     widgets::{Block, Borders, Paragraph, Wrap, List, ListItem, ListState, ScrollbarState, Scrollbar},
@@ -218,14 +218,16 @@ impl App {
             .direction(Direction::Vertical)
             .constraints(
                 [
-                    Constraint::Percentage(70),
-                    Constraint::Percentage(30),
+                    Constraint::Min(0),
+                    Constraint::Length(3), // Fixed height for input window (1 for content + 2 for borders)
                 ]
                 .as_ref(),
             )
             .split(horizontal_chunks[0]);
 
-        // Stats panel
+        // Stats panel - use the entire available space
+        let stats_area = left_chunks[0];
+
         let mut stats_lines = vec![
             Line::from(vec![
                 Span::styled("Status: ", Style::default().fg(Color::Yellow)),
@@ -243,10 +245,22 @@ impl App {
 
         let stats_text = Text::from(stats_lines);
 
-        let stats_paragraph = Paragraph::new(stats_text)
+        // Calculate the height of the stats text to center it vertically
+        let stats_height = stats_text.height() as u16;
+        let vertical_padding = (stats_area.height.saturating_sub(2 + stats_height)) / 2; // -2 for borders
+        
+        // Create a block with empty lines before the content to center it vertically
+        let mut centered_lines = Vec::new();
+        for _ in 0..vertical_padding {
+            centered_lines.push(Line::from(""));
+        }
+        centered_lines.extend(stats_text.lines.clone());
+        
+        let stats_paragraph = Paragraph::new(Text::from(centered_lines))
             .block(Block::default().borders(Borders::ALL).title("Fuzzer Stats"))
+            .alignment(Alignment::Center) // Center horizontally
             .wrap(Wrap { trim: true });
-        f.render_widget(stats_paragraph, left_chunks[0]);
+        f.render_widget(stats_paragraph, stats_area);
 
         // Command panel
         let input_text = {
