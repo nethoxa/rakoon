@@ -228,10 +228,17 @@ impl App {
         // Stats panel - use the entire available space
         let stats_area = left_chunks[0];
 
+        // Set status color based on status value
+        let status_color = if self.status == "running" {
+            Color::Green
+        } else {
+            Color::Red
+        };
+
         let mut stats_lines = vec![
             Line::from(vec![
                 Span::styled("Status: ", Style::default().fg(Color::Yellow)),
-                Span::styled(self.status.clone(), Style::default().fg(Color::Green)),
+                Span::styled(self.status.clone(), Style::default().fg(status_color)),
             ]),
             Line::from(vec![
                 Span::styled("Transactions: ", Style::default().fg(Color::Yellow)),
@@ -303,8 +310,28 @@ impl App {
                 ])));
                 
                 if i < self.output_history.len() && !self.output_history[i].is_empty() {
+                    let output_text = &self.output_history[i];
+                    let is_error = output_text == "invalid command";
+                    
+                    // Create styled output text
+                    let output_span = if is_error {
+                        Span::styled(output_text, Style::default().fg(Color::Red))
+                    } else {
+                        Span::styled(output_text, Style::default().fg(Color::White))
+                    };
+                    
+                    // Create styled icon
+                    let icon_span = if is_error {
+                        Span::styled("-", Style::default().fg(Color::Red))
+                    } else {
+                        Span::styled("+", Style::default().fg(Color::Green))
+                    };
+                    
                     history_items.push(ListItem::new(Line::from(vec![
-                        Span::styled(format!("  {}", self.output_history[i]), Style::default().fg(Color::White)),
+                        Span::raw("  ["),
+                        icon_span,
+                        Span::raw("] "),
+                        output_span
                     ])));
                 }
             }
