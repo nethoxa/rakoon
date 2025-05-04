@@ -1,8 +1,5 @@
 use alloy::{
-    hex,
-    primitives::Address,
-    signers::k256::ecdsa::SigningKey,
-    transports::http::reqwest::Url,
+    hex, primitives::Address, signers::k256::ecdsa::SigningKey, transports::http::reqwest::Url,
 };
 use crossterm::{
     event::{self, Event, KeyCode},
@@ -40,7 +37,7 @@ pub struct App {
     // UI to know if there are any `Runners` running.
     running: bool,
 
-    // The global seed all runners will use. If per-runner seeds
+    // The global seed all runners will use. If per-runner seeds [nethoxa] TODO this func
     // are used, this won't be used and will dissapear from the UI.
     seed: u64,
 
@@ -91,9 +88,6 @@ pub struct App {
     // The height of the input area. This is used as a constant to
     // keep the input area at a fixed height.
     input_height: u16,
-
-    // The last time the UI was refreshed.
-    last_refresh: Instant,
 
     // The handler for each runner. This is used to abort the
     // runner when the user wants to stop the fuzzing process of
@@ -164,7 +158,6 @@ impl App {
             scroll_offset: 0,
             left_panel_width: 70,
             input_height: 3,
-            last_refresh: Instant::now(),
             handler: HashMap::new(),
             random_runner: RandomTransactionRunner::new(rpc_url.clone(), sk.clone(), seed),
             legacy_runner: LegacyTransactionRunner::new(rpc_url.clone(), sk.clone(), seed),
@@ -372,16 +365,23 @@ impl App {
 
         // Set status color based on status value
         let status_color = if self.running { Color::Green } else { Color::Red };
+        
+        // Pretty print status
+        let status = if self.running { "Running" } else { "Stopped" };
 
         // This is the info that will be displayed in the stats panel.
         let stats_lines = vec![
             Line::from(vec![
                 Span::styled("Status: ", Style::default().fg(Color::Yellow)),
-                Span::styled(self.running.to_string(), Style::default().fg(status_color)),
+                Span::styled(status, Style::default().fg(status_color)),
             ]),
             Line::from(vec![
                 Span::styled("Seed: ", Style::default().fg(Color::Yellow)),
                 Span::styled(self.seed.to_string(), Style::default().fg(Color::Green)),
+            ]),
+            Line::from(vec![
+                Span::styled("RPC: ", Style::default().fg(Color::Yellow)),
+                Span::styled(self.rpc_url.to_string(), Style::default().fg(Color::Green)),
             ]),
             Line::from(vec![
                 Span::styled("Signer: ", Style::default().fg(Color::Yellow)),
@@ -392,6 +392,8 @@ impl App {
             ]),
         ];
 
+        let mut runners = vec![AL, Blob, EIP1559, EIP7702, Legacy, Random];
+
         // Add active runners information
         let mut active_runners = Vec::new();
         for (runner, active) in &self.active_runners {
@@ -401,38 +403,29 @@ impl App {
                 let seed = self.runner_seeds.get(runner).unwrap_or(&self.seed);
                 let address =
                     Address::from_private_key(self.runner_sks.get(runner).unwrap_or(&self.sk));
+                let rpc = self.runner_rpcs.get(runner).unwrap_or(&self.rpc_url);
+                let happy = self.runner_happy.get(runner).unwrap_or(&self.happy);
 
                 active_runners.push(Line::from(vec![
+                    Span::styled(format!("{}: ", runner), Style::default().fg(Color::Yellow)),
                     Span::styled(
-                        format!("{}: ", runner),
-                        Style::default().fg(Color::Yellow),
-                    ),
-                    Span::styled(
-                        format!("seed={}, signer={}", seed, address),
+                        format!("seed={}, signer={}, rpc={}, happy={}", seed, address, rpc, happy),
                         Style::default().fg(Color::Green),
                     ),
                 ]));
+
+                runners.remove(runners.iter().position(|r| r == runner).unwrap());
             }
         }
 
-        // Add available runners information
-        let mut available_runners = Vec::new();
-        for runner in [
-            AL, Blob, EIP1559, EIP7702, Legacy, Random,
-        ] {
-            let seed = self.runner_seeds.get(&runner).unwrap_or(&self.seed);
-            let address =
-                Address::from_private_key(self.runner_sks.get(&runner).unwrap_or(&self.sk));
-            let is_active = self.active_runners.get(&runner).unwrap_or(&false);
-            let status_color = if *is_active { Color::Green } else { Color::Gray };
-
-            available_runners.push(Line::from(vec![
-                Span::styled(format!("{}: ", runner), Style::default().fg(Color::Yellow)),
-                Span::styled(
-                    format!("seed={}, signer={}", seed, address),
-                    Style::default().fg(status_color),
-                ),
-            ]));
+        let mut available_runners = String::new();
+        for runner in runners {
+            let line = Line::from(vec![
+                Span::styled(format!("{}", runner), Style::default().fg(Color::Yellow)),
+            ]);
+            if !active_runners.contains(&line) {
+                available_runners.push_str(&format!("{} ", runner));
+            }
         }
 
         // Build all the lines to be displayed in the stats panel.
@@ -446,7 +439,9 @@ impl App {
         all_lines.push(Line::from(vec![
             Span::styled("Available Runners:", Style::default().fg(Color::Yellow)),
         ]));
-        all_lines.extend(available_runners);
+        all_lines.push(Line::from(vec![
+            Span::styled(available_runners, Style::default().fg(Color::DarkGray)),
+        ]));
 
         let stats_text = Text::from(all_lines);
 

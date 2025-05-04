@@ -37,7 +37,11 @@ pub trait Builder {
     #[allow(async_fn_in_trait)]
     async fn gas_price(&self, random: &mut StdRng) -> u128 {
         if random_bool(0.5) {
-            self.provider().get_gas_price().await.unwrap()
+            if let Ok(price) = self.provider().get_gas_price().await {
+                price
+            } else {
+                random.random::<u128>()
+            }
         } else {
             random.random::<u128>()
         }
@@ -55,7 +59,11 @@ pub trait Builder {
     #[allow(async_fn_in_trait)]
     async fn max_priority_fee_per_gas(&self, random: &mut StdRng) -> u128 {
         if random_bool(0.5) {
-            self.provider().get_max_priority_fee_per_gas().await.unwrap()
+            if let Ok(fee) = self.provider().get_max_priority_fee_per_gas().await {
+                fee
+            } else {
+                random.random::<u128>()
+            }
         } else {
             random.random::<u128>()
         }
@@ -66,7 +74,11 @@ pub trait Builder {
     #[allow(async_fn_in_trait)]
     async fn max_fee_per_blob_gas(&self, random: &mut StdRng) -> u128 {
         if random_bool(0.5) {
-            self.provider().get_blob_base_fee().await.unwrap()
+            if let Ok(fee) = self.provider().get_blob_base_fee().await {
+                fee
+            } else {
+                random.random::<u128>()
+            }
         } else {
             random.random::<u128>()
         }
@@ -84,7 +96,11 @@ pub trait Builder {
     #[allow(async_fn_in_trait)]
     async fn value(&self, random: &mut StdRng, sender: Address) -> U256 {
         if random_bool(0.5) {
-            self.provider().get_account(sender).await.unwrap().balance / U256::from(100_000_000)
+            if let Ok(balance) = self.provider().get_account(sender).await {
+                balance.balance / U256::from(100_000_000)
+            } else {
+                self.random_u256(random)
+            }
         } else {
             self.random_u256(random)
         }
@@ -112,7 +128,11 @@ pub trait Builder {
     #[allow(async_fn_in_trait)]
     async fn nonce(&self, random: &mut StdRng, sender: Address) -> u64 {
         if random_bool(0.5) {
-            self.provider().get_account(sender).await.unwrap().nonce
+            if let Ok(nonce) = self.provider().get_account(sender).await {
+                nonce.nonce
+            } else {
+                random.next_u64()
+            }
         } else {
             random.next_u64()
         }
@@ -123,7 +143,11 @@ pub trait Builder {
     #[allow(async_fn_in_trait)]
     async fn chain_id(&self, random: &mut StdRng) -> u64 {
         if random_bool(0.5) {
-            self.provider().get_chain_id().await.unwrap()
+            if let Ok(chain_id) = self.provider().get_chain_id().await {
+                chain_id
+            } else {
+                random.next_u64()
+            }
         } else {
             random.next_u64()
         }

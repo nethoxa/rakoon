@@ -4,6 +4,7 @@ use std::fmt::{self, Display};
 pub enum AppStatus {
     RuntimeError,
     Exit,
+    InvalidBool,
 }
 
 impl Display for AppStatus {
@@ -11,6 +12,7 @@ impl Display for AppStatus {
         match self {
             AppStatus::RuntimeError => write!(f, "runtime error"),
             AppStatus::Exit => write!(f, "exit"),
+            AppStatus::InvalidBool => write!(f, "invalid bool"),
         }
     }
 }

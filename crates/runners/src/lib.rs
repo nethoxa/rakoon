@@ -1,4 +1,7 @@
-use std::{fmt::{self, Display}, str::FromStr};
+use std::{
+    fmt::{self, Display},
+    str::FromStr,
+};
 
 pub mod al;
 pub mod blob;
@@ -8,7 +11,7 @@ pub mod eip7702;
 pub mod legacy;
 pub mod random;
 
-#[derive(PartialEq, Eq, Hash)]
+#[derive(PartialEq, Eq, Hash, Clone, Copy)]
 pub enum Runner {
     AL,
     Blob,
@@ -21,12 +24,12 @@ pub enum Runner {
 impl Display for Runner {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Runner::AL => write!(f, "AL"),
-            Runner::Blob => write!(f, "Blob"),
-            Runner::EIP1559 => write!(f, "EIP1559"),
-            Runner::EIP7702 => write!(f, "EIP7702"),
-            Runner::Legacy => write!(f, "Legacy"),
-            Runner::Random => write!(f, "Random"),
+            Runner::AL => write!(f, "al"),
+            Runner::Blob => write!(f, "blob"),
+            Runner::EIP1559 => write!(f, "eip1559"),
+            Runner::EIP7702 => write!(f, "eip7702"),
+            Runner::Legacy => write!(f, "legacy"),
+            Runner::Random => write!(f, "random"),
         }
     }
 }

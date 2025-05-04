@@ -5,6 +5,8 @@ pub enum Error {
     InvalidRpcUrl(String),
     RuntimeError,
     InvalidKey,
+    RunnerAlreadyRunning,
+    RunnerAlreadyStopped,
 }
 
 impl Display for Error {
@@ -13,7 +15,8 @@ impl Display for Error {
             Error::InvalidRpcUrl(url) => write!(f, "invalid rpc url: {}", url),
             Error::RuntimeError => write!(f, "runtime error"),
             Error::InvalidKey => write!(f, "invalid key"),
+            Error::RunnerAlreadyRunning => write!(f, "runner already running"),
+            Error::RunnerAlreadyStopped => write!(f, "runner already stopped"),
         }
     }
 }
-
