@@ -23,3 +23,5 @@ and it will be there. The possible commands are the following ones:
 La idea es que puedas lanzar y apagar fuzzers con seeds arbitrarias sin apagar el programa y se añada una linea con la info de cada fuzzer cuando se active uno u otro. Si stop, todos mueren. Deberías poner seeds per runner y globales.
 
 Tienes que añadir más mutatos, como por ejemplo auths duplicadas, auths duplicadas de diferentes usuarios, signatures off the curve, access lists con duplicados...
+
+Tambien solo fuzzea valid tx types, deberias poder mandar types random

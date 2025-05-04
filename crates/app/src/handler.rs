@@ -20,72 +20,101 @@ impl App {
                             return Ok(());
                         }
                         Err(_) => {
-                            *self.output.lock().unwrap() = format!("invalid u64 value for global seed: {}", value);
+                            *self.output.lock().unwrap() =
+                                format!("invalid u64 value for global seed: {}", value);
                             return Err(AppStatus::RuntimeError);
                         }
                     },
                     ("global", "sk") => match alloy::hex::decode(value) {
                         Ok(decoded) => {
                             // [nethoxa] check how to make this work
-                            match alloy::signers::k256::ecdsa::SigningKey::from_slice(decoded.as_slice()) {
+                            match alloy::signers::k256::ecdsa::SigningKey::from_slice(
+                                decoded.as_slice(),
+                            ) {
                                 Ok(key) => {
                                     self.config.set_global_sk(key);
-                                    *self.output.lock().unwrap() = format!("global signing key updated successfully");
+                                    *self.output.lock().unwrap() =
+                                        format!("global signing key updated successfully");
                                     return Ok(());
                                 }
                                 Err(_) => {
-                                    *self.output.lock().unwrap() = format!("invalid signing key format");
+                                    *self.output.lock().unwrap() =
+                                        format!("invalid signing key format");
                                     return Err(AppStatus::RuntimeError);
                                 }
                             }
                         }
                         Err(_) => {
-                            *self.output.lock().unwrap() = format!("invalid hex string for signing key");
+                            *self.output.lock().unwrap() =
+                                format!("invalid hex string for signing key");
                             return Err(AppStatus::RuntimeError);
                         }
                     },
-                    (tx_type, "seed") if ["random", "legacy", "al", "blob", "eip1559", "eip7702"].contains(&tx_type) => {
+                    (tx_type, "seed")
+                        if [
+                            "random", "legacy", "al", "blob", "eip1559", "eip7702",
+                        ]
+                        .contains(&tx_type) =>
+                    {
                         match value.parse::<u64>() {
                             Ok(val) => {
                                 self.config.set_runner_seed(tx_type.to_string(), val);
-                                *self.output.lock().unwrap() = format!("{} runner seed set to {}", tx_type, val);
+                                *self.output.lock().unwrap() =
+                                    format!("{} runner seed set to {}", tx_type, val);
                                 return Ok(());
                             }
                             Err(_) => {
-                                *self.output.lock().unwrap() = format!("invalid u64 value for {} seed: {}", tx_type, value);
+                                *self.output.lock().unwrap() =
+                                    format!("invalid u64 value for {} seed: {}", tx_type, value);
                                 return Err(AppStatus::RuntimeError);
                             }
                         }
-                    },
-                    (tx_type, "sk") if ["random", "legacy", "al", "blob", "eip1559", "eip7702"].contains(&tx_type) => {
+                    }
+                    (tx_type, "sk")
+                        if [
+                            "random", "legacy", "al", "blob", "eip1559", "eip7702",
+                        ]
+                        .contains(&tx_type) =>
+                    {
                         match alloy::hex::decode(value) {
                             Ok(decoded) => {
                                 // [nethoxa] check how to make this work
-                                match alloy::signers::k256::ecdsa::SigningKey::from_slice(decoded.as_slice()) {
+                                match alloy::signers::k256::ecdsa::SigningKey::from_slice(
+                                    decoded.as_slice(),
+                                ) {
                                     Ok(key) => {
                                         self.config.set_runner_sk(tx_type.to_string(), key);
-                                        *self.output.lock().unwrap() = format!("{} runner signing key updated successfully", tx_type);
+                                        *self.output.lock().unwrap() = format!(
+                                            "{} runner signing key updated successfully",
+                                            tx_type
+                                        );
                                         return Ok(());
                                     }
                                     Err(_) => {
-                                        *self.output.lock().unwrap() = format!("invalid signing key format");
+                                        *self.output.lock().unwrap() =
+                                            format!("invalid signing key format");
                                         return Err(AppStatus::RuntimeError);
                                     }
                                 }
                             }
                             Err(_) => {
-                                *self.output.lock().unwrap() = format!("invalid hex string for signing key");
+                                *self.output.lock().unwrap() =
+                                    format!("invalid hex string for signing key");
                                 return Err(AppStatus::RuntimeError);
                             }
                         }
-                    },
+                    }
                     _ => {
-                        *self.output.lock().unwrap() = format!("invalid set command format. Use: set <global/TX_TYPE> <seed/sk> <VALUE>");
+                        *self.output.lock().unwrap() = format!(
+                            "invalid set command format. Use: set <global/TX_TYPE> <seed/sk> <VALUE>"
+                        );
                         return Err(AppStatus::RuntimeError);
                     }
                 }
             } else {
-                *self.output.lock().unwrap() = "invalid set command format. Use: set <global/TX_TYPE> <seed/sk> <VALUE>".to_string();
+                *self.output.lock().unwrap() =
+                    "invalid set command format. Use: set <global/TX_TYPE> <seed/sk> <VALUE>"
+                        .to_string();
                 return Err(AppStatus::RuntimeError);
             }
         }
@@ -94,7 +123,11 @@ impl App {
             let parts: Vec<&str> = command.splitn(2, ' ').collect();
             if parts.len() == 2 {
                 let tx_type = parts[1];
-                if !["random", "legacy", "al", "blob", "eip1559", "eip7702"].contains(&tx_type) {
+                if ![
+                    "random", "legacy", "al", "blob", "eip1559", "eip7702",
+                ]
+                .contains(&tx_type)
+                {
                     *self.output.lock().unwrap() = format!("invalid transaction type: {}", tx_type);
                     return Err(AppStatus::RuntimeError);
                 }
@@ -108,13 +141,16 @@ impl App {
                 *self.output.lock().unwrap() = format!("{} runner started", tx_type);
                 return Ok(());
             } else {
-                *self.output.lock().unwrap() = "invalid run command format. Use: run <TX_TYPE>".to_string();
+                *self.output.lock().unwrap() =
+                    "invalid run command format. Use: run <TX_TYPE>".to_string();
                 return Err(AppStatus::RuntimeError);
             }
         }
 
         if command == "stop" {
-            for runner in ["random", "legacy", "al", "blob", "eip1559", "eip7702"] {
+            for runner in [
+                "random", "legacy", "al", "blob", "eip1559", "eip7702",
+            ] {
                 self.stop_runner(runner).await;
             }
             *self.output.lock().unwrap() = "all runners stopped".to_string();
@@ -125,7 +161,11 @@ impl App {
             let parts: Vec<&str> = command.splitn(2, ' ').collect();
             if parts.len() == 2 {
                 let tx_type = parts[1];
-                if !["random", "legacy", "al", "blob", "eip1559", "eip7702"].contains(&tx_type) {
+                if ![
+                    "random", "legacy", "al", "blob", "eip1559", "eip7702",
+                ]
+                .contains(&tx_type)
+                {
                     *self.output.lock().unwrap() = format!("invalid transaction type: {}", tx_type);
                     return Err(AppStatus::RuntimeError);
                 }
@@ -139,7 +179,8 @@ impl App {
                 *self.output.lock().unwrap() = format!("{} runner stopped", tx_type);
                 return Ok(());
             } else {
-                *self.output.lock().unwrap() = "invalid stop command format. Use: stop <TX_TYPE>".to_string();
+                *self.output.lock().unwrap() =
+                    "invalid stop command format. Use: stop <TX_TYPE>".to_string();
                 return Err(AppStatus::RuntimeError);
             }
         }
@@ -206,9 +247,9 @@ impl App {
                             format!("access list fuzzing: {}", self.config.al_enabled),
                             format!("blob fuzzing: {}", self.config.blob_enabled),
                             format!("eip1559 fuzzing: {}", self.config.eip1559_enabled),
-                            format!("eip7702 fuzzing: {}", self.config.eip7702_enabled)
+                            format!("eip7702 fuzzing: {}", self.config.eip7702_enabled),
                         ];
-                        
+
                         *self.output.lock().unwrap() = output_parts.join("\n");
                         return Ok(());
                     }

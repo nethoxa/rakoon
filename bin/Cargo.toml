@@ -12,7 +12,6 @@ crossterm = { workspace = true }
 ratatui = { workspace = true }
 tokio = { workspace = true }
 clap = { workspace = true }
-tokio-util = { workspace = true }
 alloy = { workspace = true }
 
 app = { path = "../crates/app" }

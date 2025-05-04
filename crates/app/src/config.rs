@@ -104,16 +104,11 @@ impl Config {
     }
 
     pub fn get_runner_seed(&self, runner: &str) -> u64 {
-        self.runner_seeds.get(runner)
-            .copied()
-            .or(self.global_seed)
-            .unwrap_or(self.seed)
+        self.runner_seeds.get(runner).copied().or(self.global_seed).unwrap_or(self.seed)
     }
 
     pub fn get_runner_sk(&self, runner: &str) -> &SigningKey {
-        self.runner_sks.get(runner)
-            .or(self.global_sk.as_ref())
-            .unwrap_or(&self.sk)
+        self.runner_sks.get(runner).or(self.global_sk.as_ref()).unwrap_or(&self.sk)
     }
 
     pub fn start_runner(&mut self, runner: String) {

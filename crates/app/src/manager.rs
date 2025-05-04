@@ -1,8 +1,7 @@
 use crate::App;
+use common::errors::Error;
 use std::sync::Arc;
 use tokio::sync::Mutex;
-use tokio_util::sync::CancellationToken;
-use common::errors::Error;
 
 impl App {
     pub async fn start_runner(&mut self, runner_type: &str) -> Result<(), Error> {
@@ -10,26 +9,24 @@ impl App {
         let sk = self.config.get_runner_sk(runner_type).clone();
         let seed = self.config.get_runner_seed(runner_type);
         let tx_counts = self.tx_counts.clone();
-        let mut tokens = self.tokens.lock().unwrap();
-        tokens.insert(runner_type.to_string(), CancellationToken::new());
 
         match runner_type {
             "random" => {
                 let runner = random::RandomTransactionRunner::new(rpc_url, sk, seed);
                 let tx_counts = tx_counts.clone();
-                let token = tokens.get(runner_type).unwrap().clone();
                 let runner_clone = Arc::new(Mutex::new(runner));
-                tokio::spawn({
+                let handle = tokio::spawn({
                     let runner = runner_clone.clone();
                     async move {
                         let mut runner = runner.lock().await;
-                        let result = runner.run(token).await;
-                        if let Err(e) = result {
-                            eprintln!("Error in random runner: {:?}", e);
-                        }
+                        runner.run().await;
                     }
                 });
-                // Start a task to update transaction counts
+
+                let mut handlers = self.handler.lock().unwrap();
+                handlers.insert(runner_type.to_string(), handle);
+
+                // [nethoxa] TODO does not work
                 tokio::spawn({
                     let runner = runner_clone.clone();
                     let tx_counts = tx_counts.clone();
@@ -46,19 +43,19 @@ impl App {
             "legacy" => {
                 let runner = legacy::LegacyTransactionRunner::new(rpc_url, sk, seed);
                 let tx_counts = tx_counts.clone();
-                let token = tokens.get(runner_type).unwrap().clone();
                 let runner_clone = Arc::new(Mutex::new(runner));
-                tokio::spawn({
+                let handle = tokio::spawn({
                     let runner = runner_clone.clone();
                     async move {
                         let mut runner = runner.lock().await;
-                        let result = runner.run(token).await;
-                        if let Err(e) = result {
-                            eprintln!("Error in legacy runner: {:?}", e);
-                        }
+                        runner.run().await;
                     }
                 });
-                // Start a task to update transaction counts
+
+                let mut handlers = self.handler.lock().unwrap();
+                handlers.insert(runner_type.to_string(), handle);
+
+                // [nethoxa] TODO does not work
                 tokio::spawn({
                     let runner = runner_clone.clone();
                     let tx_counts = tx_counts.clone();
@@ -75,19 +72,19 @@ impl App {
             "al" => {
                 let runner = al::ALTransactionRunner::new(rpc_url, sk, seed);
                 let tx_counts = tx_counts.clone();
-                let token = tokens.get(runner_type).unwrap().clone();
                 let runner_clone = Arc::new(Mutex::new(runner));
-                tokio::spawn({
+                let handle = tokio::spawn({
                     let runner = runner_clone.clone();
                     async move {
                         let mut runner = runner.lock().await;
-                        let result = runner.run(token).await;
-                        if let Err(e) = result {
-                            eprintln!("Error in access list runner: {:?}", e);
-                        }
+                        runner.run().await;
                     }
                 });
-                // Start a task to update transaction counts
+
+                let mut handlers = self.handler.lock().unwrap();
+                handlers.insert(runner_type.to_string(), handle);
+
+                // [nethoxa] TODO does not work
                 tokio::spawn({
                     let runner = runner_clone.clone();
                     let tx_counts = tx_counts.clone();
@@ -104,19 +101,19 @@ impl App {
             "blob" => {
                 let runner = blob::BlobTransactionRunner::new(rpc_url, sk, seed);
                 let tx_counts = tx_counts.clone();
-                let token = tokens.get(runner_type).unwrap().clone();
                 let runner_clone = Arc::new(Mutex::new(runner));
-                tokio::spawn({
+                let handle = tokio::spawn({
                     let runner = runner_clone.clone();
                     async move {
                         let mut runner = runner.lock().await;
-                        let result = runner.run(token).await;
-                        if let Err(e) = result {
-                            eprintln!("Error in blob runner: {:?}", e);
-                        }
+                        runner.run().await;
                     }
                 });
-                // Start a task to update transaction counts
+
+                let mut handlers = self.handler.lock().unwrap();
+                handlers.insert(runner_type.to_string(), handle);
+
+                // [nethoxa] TODO does not work
                 tokio::spawn({
                     let runner = runner_clone.clone();
                     let tx_counts = tx_counts.clone();
@@ -133,19 +130,19 @@ impl App {
             "eip1559" => {
                 let runner = eip1559::EIP1559TransactionRunner::new(rpc_url, sk, seed);
                 let tx_counts = tx_counts.clone();
-                let token = tokens.get(runner_type).unwrap().clone();
                 let runner_clone = Arc::new(Mutex::new(runner));
-                tokio::spawn({
+                let handle = tokio::spawn({
                     let runner = runner_clone.clone();
                     async move {
                         let mut runner = runner.lock().await;
-                        let result = runner.run(token).await;
-                        if let Err(e) = result {
-                            eprintln!("Error in EIP-1559 runner: {:?}", e);
-                        }
+                        runner.run().await;
                     }
                 });
-                // Start a task to update transaction counts
+
+                let mut handlers = self.handler.lock().unwrap();
+                handlers.insert(runner_type.to_string(), handle);
+
+                // [nethoxa] TODO does not work
                 tokio::spawn({
                     let runner = runner_clone.clone();
                     let tx_counts = tx_counts.clone();
@@ -162,19 +159,19 @@ impl App {
             "eip7702" => {
                 let runner = eip7702::EIP7702TransactionRunner::new(rpc_url, sk, seed);
                 let tx_counts = tx_counts.clone();
-                let token = tokens.get(runner_type).unwrap().clone();
                 let runner_clone = Arc::new(Mutex::new(runner));
-                tokio::spawn({
+                let handle = tokio::spawn({
                     let runner = runner_clone.clone();
                     async move {
                         let mut runner = runner.lock().await;
-                        let result = runner.run(token).await;
-                        if let Err(e) = result {
-                            eprintln!("Error in EIP-7702 runner: {:?}", e);
-                        }
+                        runner.run().await;
                     }
                 });
-                // Start a task to update transaction counts
+
+                let mut handlers = self.handler.lock().unwrap();
+                handlers.insert(runner_type.to_string(), handle);
+
+                // [nethoxa] TODO does not work
                 tokio::spawn({
                     let runner = runner_clone.clone();
                     let tx_counts = tx_counts.clone();
@@ -202,11 +199,11 @@ impl App {
         }
 
         // Get the cancellation token for this runner and cancel it
-        let mut tokens = self.tokens.lock().unwrap();
-        if let Some(token) = tokens.remove(runner_type) {
+        let mut handlers = self.handler.lock().unwrap();
+        if let Some(handle) = handlers.remove(runner_type) {
             // Cancel the token to signal the runner to stop
-            token.cancel();
-            
+            handle.abort();
+
             // Wait a short time for the runner to clean up
             tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
         }

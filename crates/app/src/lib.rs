@@ -1,4 +1,5 @@
 use al::ALTransactionRunner;
+use alloy::primitives::Address;
 use blob::BlobTransactionRunner;
 use config::Config;
 use crossterm::{
@@ -6,14 +7,12 @@ use crossterm::{
     execute,
     terminal::{EnterAlternateScreen, LeaveAlternateScreen, disable_raw_mode, enable_raw_mode},
 };
-use alloy::primitives::Address;
 use eip1559::EIP1559TransactionRunner;
 use eip7702::EIP7702TransactionRunner;
 use legacy::LegacyTransactionRunner;
 use random::RandomTransactionRunner;
-use tokio_util::sync::CancellationToken;
-use std::time::Instant;
-use std::collections::HashMap;
+use std::{collections::HashMap, time::Instant};
+use tokio::task::JoinHandle;
 
 use errors::AppStatus;
 use ratatui::{
@@ -49,8 +48,8 @@ pub struct App {
     input_height: u16,     // Store the dynamic height of the input area
     last_refresh: Instant, // Track last UI refresh time
     tx_counts: Arc<Mutex<HashMap<String, u64>>>,
-    tokens: Arc<Mutex<HashMap<String, CancellationToken>>>,
-    
+    handler: Arc<Mutex<HashMap<String, JoinHandle<()>>>>,
+
     random_runner: Arc<Mutex<RandomTransactionRunner>>,
     legacy_runner: Arc<Mutex<LegacyTransactionRunner>>,
     al_runner: Arc<Mutex<ALTransactionRunner>>,
@@ -79,13 +78,37 @@ impl App {
             input_height: 3,      // Default height (1 for content + 2 for borders)
             last_refresh: Instant::now(),
             tx_counts: Arc::new(Mutex::new(HashMap::new())),
-            tokens: Arc::new(Mutex::new(HashMap::new())),
-            random_runner: Arc::new(Mutex::new(RandomTransactionRunner::new(config.rpc_url.clone(), config.sk.clone(), config.seed))),
-            legacy_runner: Arc::new(Mutex::new(LegacyTransactionRunner::new(config.rpc_url.clone(), config.sk.clone(), config.seed))),
-            al_runner: Arc::new(Mutex::new(ALTransactionRunner::new(config.rpc_url.clone(), config.sk.clone(), config.seed))),
-            blob_runner: Arc::new(Mutex::new(BlobTransactionRunner::new(config.rpc_url.clone(), config.sk.clone(), config.seed))),
-            eip1559_runner: Arc::new(Mutex::new(EIP1559TransactionRunner::new(config.rpc_url.clone(), config.sk.clone(), config.seed))),
-            eip7702_runner: Arc::new(Mutex::new(EIP7702TransactionRunner::new(config.rpc_url.clone(), config.sk.clone(), config.seed))),
+            handler: Arc::new(Mutex::new(HashMap::new())),
+            random_runner: Arc::new(Mutex::new(RandomTransactionRunner::new(
+                config.rpc_url.clone(),
+                config.sk.clone(),
+                config.seed,
+            ))),
+            legacy_runner: Arc::new(Mutex::new(LegacyTransactionRunner::new(
+                config.rpc_url.clone(),
+                config.sk.clone(),
+                config.seed,
+            ))),
+            al_runner: Arc::new(Mutex::new(ALTransactionRunner::new(
+                config.rpc_url.clone(),
+                config.sk.clone(),
+                config.seed,
+            ))),
+            blob_runner: Arc::new(Mutex::new(BlobTransactionRunner::new(
+                config.rpc_url.clone(),
+                config.sk.clone(),
+                config.seed,
+            ))),
+            eip1559_runner: Arc::new(Mutex::new(EIP1559TransactionRunner::new(
+                config.rpc_url.clone(),
+                config.sk.clone(),
+                config.seed,
+            ))),
+            eip7702_runner: Arc::new(Mutex::new(EIP7702TransactionRunner::new(
+                config.rpc_url.clone(),
+                config.sk.clone(),
+                config.seed,
+            ))),
             config,
         }
     }
@@ -233,22 +256,38 @@ impl App {
                 if *active {
                     match runner.as_str() {
                         "random" => {
-                            tx_counts.insert("random".to_string(), self.random_runner.lock().unwrap().tx_sent);
+                            tx_counts.insert(
+                                "random".to_string(),
+                                self.random_runner.lock().unwrap().tx_sent,
+                            );
                         }
                         "legacy" => {
-                            tx_counts.insert("legacy".to_string(), self.legacy_runner.lock().unwrap().tx_sent);
+                            tx_counts.insert(
+                                "legacy".to_string(),
+                                self.legacy_runner.lock().unwrap().tx_sent,
+                            );
                         }
                         "al" => {
-                            tx_counts.insert("al".to_string(), self.al_runner.lock().unwrap().tx_sent);
+                            tx_counts
+                                .insert("al".to_string(), self.al_runner.lock().unwrap().tx_sent);
                         }
                         "blob" => {
-                            tx_counts.insert("blob".to_string(), self.blob_runner.lock().unwrap().tx_sent);
+                            tx_counts.insert(
+                                "blob".to_string(),
+                                self.blob_runner.lock().unwrap().tx_sent,
+                            );
                         }
                         "eip1559" => {
-                            tx_counts.insert("eip1559".to_string(), self.eip1559_runner.lock().unwrap().tx_sent);
+                            tx_counts.insert(
+                                "eip1559".to_string(),
+                                self.eip1559_runner.lock().unwrap().tx_sent,
+                            );
                         }
                         "eip7702" => {
-                            tx_counts.insert("eip7702".to_string(), self.eip7702_runner.lock().unwrap().tx_sent);
+                            tx_counts.insert(
+                                "eip7702".to_string(),
+                                self.eip7702_runner.lock().unwrap().tx_sent,
+                            );
                         }
                         _ => {}
                     }
@@ -301,9 +340,10 @@ impl App {
             Line::from(vec![
                 Span::styled("Global Address: ", Style::default().fg(Color::Yellow)),
                 Span::styled(
-                    self.config.global_sk.as_ref().map_or("None".to_string(), |sk| {
-                        Address::from_private_key(sk).to_string()
-                    }),
+                    self.config
+                        .global_sk
+                        .as_ref()
+                        .map_or("None".to_string(), |sk| Address::from_private_key(sk).to_string()),
                     Style::default().fg(Color::Green),
                 ),
             ]),
@@ -318,33 +358,48 @@ impl App {
                 let address = Address::from_private_key(self.config.get_runner_sk(runner));
                 let tx_count = tx_counts.get(runner).unwrap_or(&0);
                 active_runners.push(Line::from(vec![
-                    Span::styled(format!("{} Runner: ", runner), Style::default().fg(Color::Yellow)),
-                    Span::styled(format!("seed={}, address={}, txs={}", seed, address, tx_count), Style::default().fg(Color::Green)),
+                    Span::styled(
+                        format!("{} Runner: ", runner),
+                        Style::default().fg(Color::Yellow),
+                    ),
+                    Span::styled(
+                        format!("seed={}, address={}, txs={}", seed, address, tx_count),
+                        Style::default().fg(Color::Green),
+                    ),
                 ]));
             }
         }
 
         // Add available runners information
         let mut available_runners = Vec::new();
-        for runner in ["random", "legacy", "al", "blob", "eip1559", "eip7702"] {
+        for runner in [
+            "random", "legacy", "al", "blob", "eip1559", "eip7702",
+        ] {
             let seed = self.config.get_runner_seed(runner);
             let address = Address::from_private_key(self.config.get_runner_sk(runner));
             let is_active = self.config.is_runner_active(runner);
             let status_color = if is_active { Color::Green } else { Color::Gray };
             let tx_count = tx_counts.get(runner).unwrap_or(&0);
-            
+
             available_runners.push(Line::from(vec![
                 Span::styled(format!("{}: ", runner), Style::default().fg(Color::Yellow)),
-                Span::styled(format!("seed={}, address={}, txs={}", seed, address, tx_count), Style::default().fg(status_color)),
+                Span::styled(
+                    format!("seed={}, address={}, txs={}", seed, address, tx_count),
+                    Style::default().fg(status_color),
+                ),
             ]));
         }
 
         let mut all_lines = stats_lines;
         all_lines.push(Line::from(""));
-        all_lines.push(Line::from(vec![Span::styled("Active Runners:", Style::default().fg(Color::Yellow))]));
+        all_lines.push(Line::from(vec![
+            Span::styled("Active Runners:", Style::default().fg(Color::Yellow)),
+        ]));
         all_lines.extend(active_runners);
         all_lines.push(Line::from(""));
-        all_lines.push(Line::from(vec![Span::styled("Available Runners:", Style::default().fg(Color::Yellow))]));
+        all_lines.push(Line::from(vec![
+            Span::styled("Available Runners:", Style::default().fg(Color::Yellow)),
+        ]));
         all_lines.extend(available_runners);
 
         let stats_text = Text::from(all_lines);

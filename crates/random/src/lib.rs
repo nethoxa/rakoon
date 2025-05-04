@@ -4,10 +4,8 @@ use alloy::{
     rpc::types::TransactionRequest,
     signers::{k256::ecdsa::SigningKey, local::PrivateKeySigner},
 };
-use common::{builder::Builder, errors::Error, types::Backend};
+use common::{builder::Builder, types::Backend};
 use rand::{SeedableRng, rngs::StdRng};
-use std::time::Duration;
-use tokio_util::sync::CancellationToken;
 
 pub struct RandomTransactionRunner {
     pub sk: SigningKey,
@@ -31,27 +29,15 @@ impl RandomTransactionRunner {
         Self { sk, seed, tx_sent: 0, provider }
     }
 
-    pub async fn run(&mut self, token: CancellationToken) -> Result<(), Error> {
+    pub async fn run(&mut self) {
         let mut random = StdRng::seed_from_u64(self.seed);
         let sender = Address::from_private_key(&self.sk);
 
-        'outer: loop {
-            tokio::select! {
-                _ = token.cancelled() => {
-                    break 'outer;
-                }
-                _ = async {
-                    loop {
-                        let tx = self.create_random_transaction(&mut random, sender).await;
-                        let _ = self.provider.send_transaction(tx).await.unwrap();
-                        self.tx_sent += 1;
-                        tokio::time::sleep(Duration::from_millis(10)).await;
-                    }
-                } => {}
-            }
+        loop {
+            let tx = self.create_random_transaction(&mut random, sender).await;
+            let _ = self.provider.send_transaction(tx).await;
+            self.tx_sent += 1;
         }
-
-        Ok(())
     }
 
     pub async fn create_random_transaction(
