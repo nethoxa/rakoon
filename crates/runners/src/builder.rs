@@ -1,3 +1,10 @@
+use alloy::{
+    consensus::BlobTransactionSidecar,
+    eips::{eip4844::BYTES_PER_BLOB, eip7702::SignedAuthorization},
+    primitives::{Address, Bytes, FixedBytes, TxKind, U256},
+    providers::Provider,
+    rpc::types::{AccessList, AccessListItem, Authorization, TransactionInput},
+};
 use common::{
     constants::{
         MAX_ACCESS_LIST_LENGTH, MAX_ACCESSED_KEYS_LENGTH, MAX_AUTHORIZATION_LIST_LENGTH,
@@ -5,13 +12,6 @@ use common::{
         MAX_TRANSACTION_TYPE,
     },
     types::Backend,
-};
-use alloy::{
-    consensus::BlobTransactionSidecar,
-    eips::{eip4844::BYTES_PER_BLOB, eip7702::SignedAuthorization},
-    primitives::{Address, Bytes, FixedBytes, TxKind, U256},
-    providers::Provider,
-    rpc::types::{AccessList, AccessListItem, Authorization, TransactionInput},
 };
 use rand::{Rng, RngCore, random_bool, rngs::StdRng};
 

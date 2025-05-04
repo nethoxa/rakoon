@@ -1,13 +1,13 @@
+use crate::builder::Builder;
 use alloy::{
     primitives::Address,
     providers::{Provider, ProviderBuilder},
     rpc::types::TransactionRequest,
     signers::{k256::ecdsa::SigningKey, local::PrivateKeySigner},
+    transports::http::reqwest::Url,
 };
 use common::types::Backend;
 use rand::{SeedableRng, rngs::StdRng};
-use crate::builder::Builder;
-
 pub struct LegacyTransactionRunner {
     pub sk: SigningKey,
     pub seed: u64,
@@ -22,10 +22,10 @@ impl Builder for LegacyTransactionRunner {
 }
 
 impl LegacyTransactionRunner {
-    pub fn new(rpc_url: String, sk: SigningKey, seed: u64) -> Self {
+    pub fn new(rpc_url: Url, sk: SigningKey, seed: u64) -> Self {
         let provider = ProviderBuilder::new()
             .wallet::<PrivateKeySigner>(sk.clone().into())
-            .connect_http(rpc_url.parse().unwrap());
+            .connect_http(rpc_url);
         Self { sk, seed, tx_sent: 0, provider }
     }
 
@@ -86,7 +86,7 @@ impl LegacyTransactionRunner {
 async fn test_legacy_transaction_runner() {
     let mut rng = StdRng::seed_from_u64(1);
     let runner = LegacyTransactionRunner::new(
-        "http://localhost:8545".to_string(),
+        "http://localhost:8545".parse::<Url>().unwrap(),
         SigningKey::from_slice(
             &alloy::hex::decode(
                 "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80",

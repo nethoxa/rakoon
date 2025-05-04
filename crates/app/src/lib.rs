@@ -1,13 +1,14 @@
-use runners::{al::ALTransactionRunner, blob::BlobTransactionRunner, eip1559::EIP1559TransactionRunner, eip7702::EIP7702TransactionRunner, legacy::LegacyTransactionRunner, random::RandomTransactionRunner};
-use alloy::primitives::Address;
-use config::Config;
+use alloy::{
+    hex,
+    primitives::Address,
+    signers::k256::ecdsa::SigningKey,
+    transports::http::reqwest::Url,
+};
 use crossterm::{
     event::{self, Event, KeyCode},
     execute,
     terminal::{EnterAlternateScreen, LeaveAlternateScreen, disable_raw_mode, enable_raw_mode},
 };
-use std::{collections::HashMap, time::Instant};
-use tokio::task::JoinHandle;
 use errors::AppStatus;
 use ratatui::{
     Frame, Terminal,
@@ -19,138 +20,214 @@ use ratatui::{
         Block, Borders, List, ListItem, ListState, Paragraph, Scrollbar, ScrollbarState, Wrap,
     },
 };
-use std::{
-    io,
-    sync::{Arc, Mutex},
-    time::Duration,
+use runners::{
+    Runner, Runner::*, al::ALTransactionRunner, blob::BlobTransactionRunner,
+    eip1559::EIP1559TransactionRunner, eip7702::EIP7702TransactionRunner,
+    legacy::LegacyTransactionRunner, random::RandomTransactionRunner,
 };
-pub mod config;
+use std::{
+    collections::HashMap,
+    io,
+    time::{Duration, Instant},
+};
+use tokio::task::JoinHandle;
 pub mod errors;
 pub mod handler;
 pub mod manager;
 
 pub struct App {
-    status: String,
-    output: Arc<Mutex<String>>,
+    // Whether the app is running or not. It is displayed in the
+    // UI to know if there are any `Runners` running.
+    running: bool,
+
+    // The global seed all runners will use. If per-runner seeds
+    // are used, this won't be used and will dissapear from the UI.
+    seed: u64,
+
+    // The private key of the account that will be sending the
+    // transactions. The same as with `seed`, if per-runner sk
+    // are used, this won't be used and will dissapear from the UI.
+    sk: SigningKey,
+
+    // The RPC URL. The same as with `seed` and `sk`, if per-runner
+    // RPC URLs are used, this won't be used and will dissapear from
+    // the UI.
+    rpc_url: Url,
+
+    // The happy flag. This is used to determine if the happy path
+    // should be used for the runners.
+    happy: bool,
+
+    // The output buffer. This is used to store the output of the
+    // command that is being executed.
+    output: String,
+
+    // The history of commands that have been executed.
     command_history: Vec<String>,
+
+    // The history of outputs that have been produced.
     output_history: Vec<String>,
-    error_history: Vec<bool>, // Track if each output is an error
+
+    // The history of errors that have been produced. This is used
+    // to determine the symbol and color to display in the output
+    // window.
+    error_history: Vec<bool>,
+
+    // The scrollbar widget state.
     history_scroll_state: ScrollbarState,
+
+    // The state of the history list.
     history_list_state: ListState,
+
+    // The scroll offset of the history list. This is used to keep
+    // the bottom of the output window always where the last command
+    // was executed.
     scroll_offset: usize,
-    left_panel_width: u16, // Store the width of the left panel
-    input_height: u16,     // Store the dynamic height of the input area
-    last_refresh: Instant, // Track last UI refresh time
-    tx_counts: Arc<Mutex<HashMap<String, u64>>>,
-    handler: Arc<Mutex<HashMap<String, JoinHandle<()>>>>,
 
-    random_runner: Arc<Mutex<RandomTransactionRunner>>,
-    legacy_runner: Arc<Mutex<LegacyTransactionRunner>>,
-    al_runner: Arc<Mutex<ALTransactionRunner>>,
-    blob_runner: Arc<Mutex<BlobTransactionRunner>>,
-    eip1559_runner: Arc<Mutex<EIP1559TransactionRunner>>,
-    eip7702_runner: Arc<Mutex<EIP7702TransactionRunner>>,
+    // The width of the left panel. This is used to widden the output
+    // window to show larger information in a more readable way.
+    left_panel_width: u16,
 
-    config: Config,
+    // The height of the input area. This is used as a constant to
+    // keep the input area at a fixed height.
+    input_height: u16,
+
+    // The last time the UI was refreshed.
+    last_refresh: Instant,
+
+    // The handler for each runner. This is used to abort the
+    // runner when the user wants to stop the fuzzing process of
+    // either a specific runner or all runners.
+    handler: HashMap<Runner, JoinHandle<()>>,
+
+    // The random runner.
+    random_runner: RandomTransactionRunner,
+
+    // The legacy runner.
+    legacy_runner: LegacyTransactionRunner,
+
+    // The AL runner.
+    al_runner: ALTransactionRunner,
+
+    // The blob runner.
+    blob_runner: BlobTransactionRunner,
+
+    // The EIP-1559 runner.
+    eip1559_runner: EIP1559TransactionRunner,
+
+    // The EIP-7702 runner.
+    eip7702_runner: EIP7702TransactionRunner,
+
+    // The active runners. This is used to know which runners are
+    // currently running and update the information in the UI
+    // accordingly.
+    active_runners: HashMap<Runner, bool>,
+
+    // The seeds for each runner. This is to have more granular control
+    // over the runners.
+    runner_seeds: HashMap<Runner, u64>,
+
+    // The private keys for each runner. The same as with `runner_seeds`.
+    runner_sks: HashMap<Runner, SigningKey>,
+
+    // The RPC URLs for each runner. The same as with `runner_seeds`.
+    runner_rpcs: HashMap<Runner, Url>,
+
+    // The happy flag for each runner. The same as with `runner_seeds`.
+    runner_happy: HashMap<Runner, bool>,
 }
 
 impl App {
-    pub fn new(config: Config) -> Self {
+    /// Creates a new `App` instance.
+    ///
+    /// # Arguments
+    ///
+    /// * `rpc_url` - The URL of the RPC endpoint.
+    /// * `sk` - The private key of the account that will be sending the transactions.
+    /// * `seed` - The seed to use for the runners.
+    pub fn new(rpc_url: Url, sk: SigningKey, seed: u64) -> Self {
         let mut list_state = ListState::default();
         list_state.select(Some(0));
 
         App {
-            status: "stopped".to_string(),
-            output: Arc::new(Mutex::new(String::new())),
+            running: false,
+            seed,
+            sk: sk.clone(),
+            rpc_url: rpc_url.clone(),
+            happy: false,
+            output: String::new(),
             command_history: Vec::new(),
             output_history: Vec::new(),
-            error_history: Vec::new(), // Initialize error history
+            error_history: Vec::new(),
             history_scroll_state: ScrollbarState::default(),
             history_list_state: list_state,
             scroll_offset: 0,
-            left_panel_width: 70, // Default width percentage
-            input_height: 3,      // Default height (1 for content + 2 for borders)
+            left_panel_width: 70,
+            input_height: 3,
             last_refresh: Instant::now(),
-            tx_counts: Arc::new(Mutex::new(HashMap::new())),
-            handler: Arc::new(Mutex::new(HashMap::new())),
-            random_runner: Arc::new(Mutex::new(RandomTransactionRunner::new(
-                config.rpc_url.clone(),
-                config.sk.clone(),
-                config.seed,
-            ))),
-            legacy_runner: Arc::new(Mutex::new(LegacyTransactionRunner::new(
-                config.rpc_url.clone(),
-                config.sk.clone(),
-                config.seed,
-            ))),
-            al_runner: Arc::new(Mutex::new(ALTransactionRunner::new(
-                config.rpc_url.clone(),
-                config.sk.clone(),
-                config.seed,
-            ))),
-            blob_runner: Arc::new(Mutex::new(BlobTransactionRunner::new(
-                config.rpc_url.clone(),
-                config.sk.clone(),
-                config.seed,
-            ))),
-            eip1559_runner: Arc::new(Mutex::new(EIP1559TransactionRunner::new(
-                config.rpc_url.clone(),
-                config.sk.clone(),
-                config.seed,
-            ))),
-            eip7702_runner: Arc::new(Mutex::new(EIP7702TransactionRunner::new(
-                config.rpc_url.clone(),
-                config.sk.clone(),
-                config.seed,
-            ))),
-            config,
+            handler: HashMap::new(),
+            random_runner: RandomTransactionRunner::new(rpc_url.clone(), sk.clone(), seed),
+            legacy_runner: LegacyTransactionRunner::new(rpc_url.clone(), sk.clone(), seed),
+            al_runner: ALTransactionRunner::new(rpc_url.clone(), sk.clone(), seed),
+            blob_runner: BlobTransactionRunner::new(rpc_url.clone(), sk.clone(), seed),
+            eip1559_runner: EIP1559TransactionRunner::new(rpc_url.clone(), sk.clone(), seed),
+            eip7702_runner: EIP7702TransactionRunner::new(rpc_url.clone(), sk.clone(), seed),
+            active_runners: HashMap::new(),
+            runner_seeds: HashMap::new(),
+            runner_sks: HashMap::new(),
+            runner_rpcs: HashMap::new(),
+            runner_happy: HashMap::new(),
         }
     }
 
+    /// This is the entry point for the app. It will start the UI and
+    /// handle the input from the user.
     pub async fn run(&mut self) -> Result<(), io::Error> {
+        // This is done to make it possible for the TUI to disable by-default
+        // behaviors of the terminal. That way, we can build ours from the
+        // ground up.
         enable_raw_mode()?;
         let mut stdout = io::stdout();
         execute!(stdout, EnterAlternateScreen)?;
         let backend = CrosstermBackend::new(stdout);
         let mut terminal = Terminal::new(backend)?;
 
-        let input = Arc::new(Mutex::new(String::new()));
-
+        let mut input = String::new();
         loop {
             terminal.draw(|f| self.ui(f, &input))?;
 
+            // We check if there is an event in the queue. If there is,
+            // we read it and handle it.
             if event::poll(Duration::from_millis(100))? {
+                // Pressed key event
                 if let Event::Key(key) = event::read()? {
                     match key.code {
                         KeyCode::Char(c) => {
-                            let mut current_input = input.lock().unwrap();
-                            current_input.push(c);
+                            input.push(c);
                         }
+
+                        // Backspace key event, we remove the last character from the input.
                         KeyCode::Backspace => {
-                            let mut current_input = input.lock().unwrap();
-                            current_input.pop();
+                            input.pop();
                         }
+
+                        // Enter key event, we handle all the stuff the user has typed in.
                         KeyCode::Enter => {
-                            let mut current_input = input.lock().unwrap();
-                            let command = current_input.clone();
-                            current_input.clear();
+                            let command = input.clone();
+                            input.clear();
 
                             // Add command to history
                             if !command.trim().is_empty() {
                                 self.command_history.push(command.clone());
                             }
 
-                            // Store current output before handling command
+                            // Handle the command
                             let result = self.handle_command(command).await;
 
                             // Add output to history
-                            let output = self.output.lock().unwrap().clone();
-                            if !output.is_empty() {
-                                self.output_history.push(output.clone());
+                            if !self.output.is_empty() {
+                                self.output_history.push(self.output.clone());
                             }
-
-                            // Reset input height to default
-                            self.input_height = 3;
 
                             // Update list state to scroll to the bottom
                             let total_items = self.command_history.len()
@@ -162,18 +239,25 @@ impl App {
                             }
 
                             if result.is_err() {
+                                // This is a hack to exit the app if the command is `exit`.
                                 if result.unwrap_err() == AppStatus::Exit {
                                     break;
                                 }
 
+                                // Add the error to the history, so that it is displayed as [-]
                                 self.error_history.push(true);
                             } else {
+                                // Add the success to the history, so that it is displayed as [+]
                                 self.error_history.push(false);
                             }
                         }
+
+                        // Escape key event, we exit the app.
                         KeyCode::Esc => {
                             break;
                         }
+
+                        // Up key event, we scroll up the history by one line.
                         KeyCode::Up => {
                             // Scroll history up
                             if self.scroll_offset > 0 {
@@ -185,6 +269,8 @@ impl App {
                                 }
                             }
                         }
+
+                        // Down key event, we scroll down the history by one line.
                         KeyCode::Down => {
                             // Scroll history down
                             let total_items = self.command_history.len()
@@ -198,18 +284,25 @@ impl App {
                                 }
                             }
                         }
+
+                        // Left key event, we decrease the left panel width by 5.
                         KeyCode::Left => {
                             // Decrease left panel width (minimum 20%)
                             if self.left_panel_width > 20 {
                                 self.left_panel_width -= 5;
                             }
                         }
+
+                        // Right key event, we increase the left panel width by 5.
                         KeyCode::Right => {
                             // Increase left panel width (maximum 70%)
                             if self.left_panel_width < 70 {
                                 self.left_panel_width += 5;
                             }
                         }
+
+                        // Page up key event, or scroll up from the touchpad, we scroll up the
+                        // history by 5 lines. [nethoxa] check this
                         KeyCode::PageUp => {
                             // Scroll history up by multiple lines
                             if self.scroll_offset > 0 {
@@ -217,6 +310,9 @@ impl App {
                                 self.history_list_state.select(Some(self.scroll_offset));
                             }
                         }
+
+                        // Page down key event, or scroll down from the touchpad, we scroll down the
+                        // history by 5 lines.
                         KeyCode::PageDown => {
                             // Scroll history down by multiple lines
                             let total_items = self.command_history.len()
@@ -240,56 +336,14 @@ impl App {
         Ok(())
     }
 
-    fn ui(&mut self, f: &mut Frame, input: &Arc<Mutex<String>>) {
-        // Check if we need to refresh the UI (every 10ms)
-        if self.last_refresh.elapsed() >= Duration::from_millis(10) {
-            self.last_refresh = Instant::now();
-            // Update transaction counts from runners
-            let mut tx_counts = self.tx_counts.lock().unwrap();
-            for (runner, active) in &self.config.active_runners {
-                if *active {
-                    match runner.as_str() {
-                        "random" => {
-                            tx_counts.insert(
-                                "random".to_string(),
-                                self.random_runner.lock().unwrap().tx_sent,
-                            );
-                        }
-                        "legacy" => {
-                            tx_counts.insert(
-                                "legacy".to_string(),
-                                self.legacy_runner.lock().unwrap().tx_sent,
-                            );
-                        }
-                        "al" => {
-                            tx_counts
-                                .insert("al".to_string(), self.al_runner.lock().unwrap().tx_sent);
-                        }
-                        "blob" => {
-                            tx_counts.insert(
-                                "blob".to_string(),
-                                self.blob_runner.lock().unwrap().tx_sent,
-                            );
-                        }
-                        "eip1559" => {
-                            tx_counts.insert(
-                                "eip1559".to_string(),
-                                self.eip1559_runner.lock().unwrap().tx_sent,
-                            );
-                        }
-                        "eip7702" => {
-                            tx_counts.insert(
-                                "eip7702".to_string(),
-                                self.eip7702_runner.lock().unwrap().tx_sent,
-                            );
-                        }
-                        _ => {}
-                    }
-                }
-            }
-        }
-
-        // First split the screen into left and right panels using the stored width
+    /// This is the function that renders the UI.
+    ///
+    /// # Arguments
+    ///
+    /// * `f` - The frame to render the UI on.
+    /// * `input` - The input from the user.
+    fn ui(&mut self, f: &mut Frame, input: &String) {
+        // First split the screen into left and right panels using the stored width.
         let horizontal_chunks = Layout::default()
             .direction(Direction::Horizontal)
             .constraints(
@@ -317,47 +371,44 @@ impl App {
         let stats_area = left_chunks[0];
 
         // Set status color based on status value
-        let status_color = if self.status == "running" { Color::Green } else { Color::Red };
+        let status_color = if self.running { Color::Green } else { Color::Red };
 
+        // This is the info that will be displayed in the stats panel.
         let stats_lines = vec![
             Line::from(vec![
                 Span::styled("Status: ", Style::default().fg(Color::Yellow)),
-                Span::styled(self.status.clone(), Style::default().fg(status_color)),
+                Span::styled(self.running.to_string(), Style::default().fg(status_color)),
             ]),
             Line::from(vec![
-                Span::styled("Global Seed: ", Style::default().fg(Color::Yellow)),
-                Span::styled(
-                    self.config.global_seed.map_or("None".to_string(), |s| s.to_string()),
-                    Style::default().fg(Color::Green),
-                ),
+                Span::styled("Seed: ", Style::default().fg(Color::Yellow)),
+                Span::styled(self.seed.to_string(), Style::default().fg(Color::Green)),
             ]),
             Line::from(vec![
-                Span::styled("Global Address: ", Style::default().fg(Color::Yellow)),
+                Span::styled("Signer: ", Style::default().fg(Color::Yellow)),
                 Span::styled(
-                    self.config
-                        .global_sk
-                        .as_ref()
-                        .map_or("None".to_string(), |sk| Address::from_private_key(sk).to_string()),
+                    format!("0x{}", hex::encode(self.sk.to_bytes())),
                     Style::default().fg(Color::Green),
                 ),
             ]),
         ];
 
-        // Add active runners information with transaction counts
+        // Add active runners information
         let mut active_runners = Vec::new();
-        let tx_counts = self.tx_counts.lock().unwrap();
-        for (runner, active) in &self.config.active_runners {
+        for (runner, active) in &self.active_runners {
             if *active {
-                let seed = self.config.get_runner_seed(runner);
-                let address = Address::from_private_key(self.config.get_runner_sk(runner));
-                let tx_count = tx_counts.get(runner).unwrap_or(&0);
+                // Here, if there is no per-runner `seed` or `sk`, we use the `global` seed and
+                // `sk`.
+                let seed = self.runner_seeds.get(runner).unwrap_or(&self.seed);
+                let address =
+                    Address::from_private_key(self.runner_sks.get(runner).unwrap_or(&self.sk));
+
                 active_runners.push(Line::from(vec![
                     Span::styled(
-                        format!("{} Runner: ", runner),
+                        format!("{}: ", runner),
                         Style::default().fg(Color::Yellow),
                     ),
                     Span::styled(
-                        format!("seed={}, address={}, txs={}", seed, address, tx_count),
+                        format!("seed={}, signer={}", seed, address),
                         Style::default().fg(Color::Green),
                     ),
                 ]));
@@ -367,23 +418,24 @@ impl App {
         // Add available runners information
         let mut available_runners = Vec::new();
         for runner in [
-            "random", "legacy", "al", "blob", "eip1559", "eip7702",
+            AL, Blob, EIP1559, EIP7702, Legacy, Random,
         ] {
-            let seed = self.config.get_runner_seed(runner);
-            let address = Address::from_private_key(self.config.get_runner_sk(runner));
-            let is_active = self.config.is_runner_active(runner);
-            let status_color = if is_active { Color::Green } else { Color::Gray };
-            let tx_count = tx_counts.get(runner).unwrap_or(&0);
+            let seed = self.runner_seeds.get(&runner).unwrap_or(&self.seed);
+            let address =
+                Address::from_private_key(self.runner_sks.get(&runner).unwrap_or(&self.sk));
+            let is_active = self.active_runners.get(&runner).unwrap_or(&false);
+            let status_color = if *is_active { Color::Green } else { Color::Gray };
 
             available_runners.push(Line::from(vec![
                 Span::styled(format!("{}: ", runner), Style::default().fg(Color::Yellow)),
                 Span::styled(
-                    format!("seed={}, address={}, txs={}", seed, address, tx_count),
+                    format!("seed={}, signer={}", seed, address),
                     Style::default().fg(status_color),
                 ),
             ]));
         }
 
+        // Build all the lines to be displayed in the stats panel.
         let mut all_lines = stats_lines;
         all_lines.push(Line::from(""));
         all_lines.push(Line::from(vec![
@@ -409,6 +461,7 @@ impl App {
         }
         centered_lines.extend(stats_text.lines.clone());
 
+        // Create a paragraph with the centered lines.
         let stats_paragraph = Paragraph::new(Text::from(centered_lines))
             .block(Block::default().borders(Borders::ALL).title("Fuzzer Stats"))
             .alignment(Alignment::Center) // Center horizontally
@@ -417,11 +470,10 @@ impl App {
 
         // Command panel
         let input_text = {
-            let input_lock = input.lock().unwrap();
             Text::from(vec![
                 Line::from(vec![
                     Span::styled("> ", Style::default().fg(Color::Yellow)),
-                    Span::raw(input_lock.clone()),
+                    Span::raw(input.clone()),
                 ]),
             ])
         };
@@ -550,5 +602,9 @@ impl App {
 
             f.render_stateful_widget(scrollbar, history_inner_area, &mut self.history_scroll_state);
         }
+    }
+
+    fn print(&mut self, output: &str) {
+        self.output = output.to_string();
     }
 }

@@ -1,133 +1,122 @@
 use crate::App;
 use common::errors::Error;
-use std::sync::Arc;
-use tokio::sync::Mutex;
-use runners::{al::ALTransactionRunner, blob::BlobTransactionRunner, eip1559::EIP1559TransactionRunner, eip7702::EIP7702TransactionRunner, legacy::LegacyTransactionRunner, random::RandomTransactionRunner};
+use runners::{
+    Runner, Runner::*, al::ALTransactionRunner, blob::BlobTransactionRunner,
+    eip1559::EIP1559TransactionRunner, eip7702::EIP7702TransactionRunner,
+    legacy::LegacyTransactionRunner, random::RandomTransactionRunner,
+};
+
 impl App {
-    pub async fn start_runner(&mut self, runner_type: &str) -> Result<(), Error> {
-        let rpc_url = self.config.rpc_url.clone();
-        let sk = self.config.get_runner_sk(runner_type).clone();
-        let seed = self.config.get_runner_seed(runner_type);
-        let tx_counts = self.tx_counts.clone();
+    /// Starts a runner given its type. This function spawns a thread and
+    /// stores its `handle` in the `handler` map. That way we can stop it
+    /// later on by calling `abort` on the `handle`.
+    ///
+    /// # Arguments
+    ///
+    /// * `runner_type` - The type of the runner to start.
+    pub async fn start_runner(&mut self, runner_type: Runner) -> Result<(), Error> {
+        let sk = self.runner_sks.get(&runner_type).unwrap_or(&self.sk).clone();
+        let seed = *self.runner_seeds.get(&runner_type).unwrap_or(&self.seed);
+        let rpc = self.runner_rpcs.get(&runner_type).unwrap_or(&self.rpc_url).clone();
 
         match runner_type {
-            "random" => {
-                let runner = RandomTransactionRunner::new(rpc_url, sk, seed);
-                let tx_counts = tx_counts.clone();
-                let runner_clone = Arc::new(Mutex::new(runner));
+            AL => {
                 let handle = tokio::spawn({
-                    let runner = runner_clone.clone();
+                    let rpc = rpc.clone();
+                    let sk = sk.clone();
                     async move {
-                        let mut runner = runner.lock().await;
+                        let mut runner = ALTransactionRunner::new(rpc, sk, seed);
                         runner.run().await;
                     }
                 });
 
-                let mut handlers = self.handler.lock().unwrap();
-                handlers.insert(runner_type.to_string(), handle);
+                self.handler.insert(runner_type, handle);
             }
-            "legacy" => {
-                let runner = LegacyTransactionRunner::new(rpc_url, sk, seed);
-                let tx_counts = tx_counts.clone();
-                let runner_clone = Arc::new(Mutex::new(runner));
+            Blob => {
                 let handle = tokio::spawn({
-                    let runner = runner_clone.clone();
+                    let rpc = rpc.clone();
+                    let sk = sk.clone();
                     async move {
-                        let mut runner = runner.lock().await;
+                        let mut runner = BlobTransactionRunner::new(rpc, sk, seed);
                         runner.run().await;
                     }
                 });
 
-                let mut handlers = self.handler.lock().unwrap();
-                handlers.insert(runner_type.to_string(), handle);
+                self.handler.insert(runner_type, handle);
             }
-            "al" => {
-                let runner = ALTransactionRunner::new(rpc_url, sk, seed);
-                let tx_counts = tx_counts.clone();
-                let runner_clone = Arc::new(Mutex::new(runner));
+            EIP1559 => {
                 let handle = tokio::spawn({
-                    let runner = runner_clone.clone();
+                    let rpc = rpc.clone();
+                    let sk = sk.clone();
                     async move {
-                        let mut runner = runner.lock().await;
+                        let mut runner = EIP1559TransactionRunner::new(rpc, sk, seed);
                         runner.run().await;
                     }
                 });
 
-                let mut handlers = self.handler.lock().unwrap();
-                handlers.insert(runner_type.to_string(), handle);
+                self.handler.insert(runner_type, handle);
             }
-            "blob" => {
-                let runner = BlobTransactionRunner::new(rpc_url, sk, seed);
-                let tx_counts = tx_counts.clone();
-                let runner_clone = Arc::new(Mutex::new(runner));
+            EIP7702 => {
                 let handle = tokio::spawn({
-                    let runner = runner_clone.clone();
+                    let rpc = rpc.clone();
+                    let sk = sk.clone();
                     async move {
-                        let mut runner = runner.lock().await;
+                        let mut runner = EIP7702TransactionRunner::new(rpc, sk, seed);
                         runner.run().await;
                     }
                 });
 
-                let mut handlers = self.handler.lock().unwrap();
-                handlers.insert(runner_type.to_string(), handle);
+                self.handler.insert(runner_type, handle);
             }
-            "eip1559" => {
-                let runner = EIP1559TransactionRunner::new(rpc_url, sk, seed);
-                let tx_counts = tx_counts.clone();
-                let runner_clone = Arc::new(Mutex::new(runner));
+            Legacy => {
                 let handle = tokio::spawn({
-                    let runner = runner_clone.clone();
+                    let rpc = rpc.clone();
+                    let sk = sk.clone();
                     async move {
-                        let mut runner = runner.lock().await;
+                        let mut runner = LegacyTransactionRunner::new(rpc, sk, seed);
                         runner.run().await;
                     }
                 });
 
-                let mut handlers = self.handler.lock().unwrap();
-                handlers.insert(runner_type.to_string(), handle);
+                self.handler.insert(runner_type, handle);
             }
-            "eip7702" => {
-                let runner = EIP7702TransactionRunner::new(rpc_url, sk, seed);
-                let tx_counts = tx_counts.clone();
-                let runner_clone = Arc::new(Mutex::new(runner));
+            Random => {
                 let handle = tokio::spawn({
-                    let runner = runner_clone.clone();
+                    let rpc = rpc.clone();
+                    let sk = sk.clone();
                     async move {
-                        let mut runner = runner.lock().await;
+                        let mut runner = RandomTransactionRunner::new(rpc, sk, seed);
                         runner.run().await;
                     }
                 });
 
-                let mut handlers = self.handler.lock().unwrap();
-                handlers.insert(runner_type.to_string(), handle);
+                self.handler.insert(runner_type, handle);
             }
             _ => return Err(Error::RuntimeError),
         }
 
-        self.config.start_runner(runner_type.to_string());
-        self.status = "running".to_string();
         Ok(())
     }
 
-    pub async fn stop_runner(&mut self, runner_type: &str) -> Result<(), Error> {
-        if !self.config.is_runner_active(runner_type) {
+    pub async fn stop_runner(&mut self, runner_type: Runner) -> Result<(), Error> {
+        if !self.active_runners.get(&runner_type).unwrap_or(&false) {
             return Err(Error::RuntimeError);
         }
 
-        // Get the cancellation token for this runner and cancel it
-        let mut handlers = self.handler.lock().unwrap();
-        if let Some(handle) = handlers.remove(runner_type) {
-            // Cancel the token to signal the runner to stop
+        // Get the handle for this runner and abort it
+        if let Some(handle) = self.handler.remove(&runner_type) {
+            // Cancel the handle to signal the runner to stop
             handle.abort();
-
-            // Wait a short time for the runner to clean up
-            tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
         }
 
-        self.config.stop_runner(runner_type);
-        if self.config.active_runners.is_empty() {
-            self.status = "stopped".to_string();
+        // Remove the runner from the active runners map
+        self.active_runners.remove(&runner_type);
+
+        // If all runners are stopped, set the running flag to false
+        if self.active_runners.values().all(|&active| !active) {
+            self.running = false;
         }
+
         Ok(())
     }
 }
