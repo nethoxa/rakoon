@@ -23,6 +23,8 @@ version = "0.1.0"
 dependencies = [
  "alloy",
  "common",
+ "rand 0.9.1",
+ "tokio",
  "tokio-util",
 ]
 
@@ -959,6 +961,8 @@ version = "0.1.0"
 dependencies = [
  "alloy",
  "common",
+ "rand 0.9.1",
+ "tokio",
  "tokio-util",
 ]
 
@@ -1129,6 +1133,7 @@ name = "common"
 version = "0.1.0"
 dependencies = [
  "alloy",
+ "rand 0.9.1",
 ]
 
 [[package]]
@@ -1491,6 +1496,8 @@ version = "0.1.0"
 dependencies = [
  "alloy",
  "common",
+ "rand 0.9.1",
+ "tokio",
  "tokio-util",
 ]
 
@@ -1500,6 +1507,8 @@ version = "0.1.0"
 dependencies = [
  "alloy",
  "common",
+ "rand 0.9.1",
+ "tokio",
  "tokio-util",
 ]
 
@@ -2262,6 +2271,8 @@ version = "0.1.0"
 dependencies = [
  "alloy",
  "common",
+ "rand 0.9.1",
+ "tokio",
  "tokio-util",
 ]
 

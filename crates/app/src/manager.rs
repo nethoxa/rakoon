@@ -1,5 +1,3 @@
 use crate::App;
 
-impl App {
-
-}
+impl App {}

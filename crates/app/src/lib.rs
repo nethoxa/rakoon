@@ -21,10 +21,10 @@ use std::{
     sync::{Arc, Mutex},
     time::Duration,
 };
-pub mod handler;
-pub mod manager;
 pub mod config;
 pub mod errors;
+pub mod handler;
+pub mod manager;
 
 pub struct App {
     status: String,
@@ -38,13 +38,11 @@ pub struct App {
     left_panel_width: u16, // Store the width of the left panel
     input_height: u16,     // Store the dynamic height of the input area
 
-    config: Config
+    config: Config,
 }
 
 impl App {
-    pub fn new(
-        config: Config
-    ) -> Self {
+    pub fn new(config: Config) -> Self {
         let mut list_state = ListState::default();
         list_state.select(Some(0));
 
@@ -227,7 +225,7 @@ impl App {
         // Set status color based on status value
         let status_color = if self.status == "running" { Color::Green } else { Color::Red };
 
-        let mut stats_lines = vec![
+        let stats_lines = vec![
             Line::from(vec![
                 Span::styled("Status: ", Style::default().fg(Color::Yellow)),
                 Span::styled(self.status.clone(), Style::default().fg(status_color)),

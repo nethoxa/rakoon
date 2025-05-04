@@ -8,3 +8,5 @@ rust-version.workspace = true
 common = { path = "../common" }
 tokio-util = { workspace = true }
 alloy = { workspace = true }
+rand = { workspace = true }
+tokio = { workspace = true }

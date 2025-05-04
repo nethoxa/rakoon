@@ -1,6 +1,6 @@
 use al::ALTransactionRunner;
 use alloy::{hex, signers::k256::ecdsa::SigningKey};
-use app::{config::Config, App};
+use app::{App, config::Config};
 use blob::BlobTransactionRunner;
 use clap::Parser;
 use eip1559::EIP1559TransactionRunner;
@@ -15,7 +15,11 @@ use tokio_util::sync::CancellationToken;
 struct Cli {
     #[arg(long, help = "RPC URL to send transactions to", default_value = "http://localhost:8545")]
     rpc: String,
-    #[arg(long, help = "Faucet key", default_value = "0xcdfbe6f7602f67a97602e3e9fc24cde1cdffa88acd47745c0b84c5ff55891e1b")]
+    #[arg(
+        long,
+        help = "Faucet key",
+        default_value = "0xcdfbe6f7602f67a97602e3e9fc24cde1cdffa88acd47745c0b84c5ff55891e1b"
+    )]
     sk: String,
     #[arg(long, help = "Path to the kurtosis network params file", default_value = "")]
     params: String,
@@ -52,7 +56,7 @@ async fn main() {
         al_enabled: cli.al,
         blob_enabled: cli.blob,
         eip1559_enabled: cli.eip1559,
-        eip7702_enabled: cli.eip7702
+        eip7702_enabled: cli.eip7702,
     };
 
     let mut app = App::new(config);
