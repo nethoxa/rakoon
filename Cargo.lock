@@ -695,6 +695,7 @@ dependencies = [
  "random",
  "ratatui",
  "tokio",
+ "tokio-util",
 ]
 
 [[package]]

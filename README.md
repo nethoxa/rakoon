@@ -7,13 +7,19 @@ This is a transaction fuzzer for the Ethereum Protocol, with per-transaction cus
 It is as simple as doing
 
 ```shell
-make run
+./rakoon
 ```
 
-and the user interface will pop-up, showing all the available commands and his flags. For reference, we put them here:
+and the user interface will pop-up. If there is no binary in the root of the project (it should be if I'm not stupid), then run
 
-TODO
+```shell
+make build
+```
 
-## Future features
-- [ ] Make it possible to run in standalone mode without UI, worth it? I dont think so
-- [ ] Add more mutators
+and it will be there. The possible commands are the following ones:
+
+- TODO
+
+La idea es que puedas lanzar y apagar fuzzers con seeds arbitrarias sin apagar el programa y se añada una linea con la info de cada fuzzer cuando se active uno u otro. Si stop, todos mueren. Deberías poner seeds per runner y globales.
+
+Tienes que añadir más mutatos, como por ejemplo auths duplicadas, auths duplicadas de diferentes usuarios, signatures off the curve, access lists con duplicados...

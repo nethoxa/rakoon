@@ -10,10 +10,10 @@ use std::time::Duration;
 use tokio_util::sync::CancellationToken;
 
 pub struct EIP1559TransactionRunner {
-    sk: SigningKey,
-    seed: u64,
-    tx_sent: u64,
-    provider: Backend,
+    pub sk: SigningKey,
+    pub seed: u64,
+    pub tx_sent: u64,
+    pub provider: Backend,
 }
 
 impl Builder for EIP1559TransactionRunner {

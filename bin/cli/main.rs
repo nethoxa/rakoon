@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use alloy::{hex, signers::k256::ecdsa::SigningKey};
 use app::{App, config::Config};
 use clap::Parser;
@@ -50,8 +52,13 @@ async fn main() {
         blob_enabled: cli.blob,
         eip1559_enabled: cli.eip1559,
         eip7702_enabled: cli.eip7702,
+        global_seed: None,
+        global_sk: None,
+        runner_seeds: HashMap::new(),
+        runner_sks: HashMap::new(),
+        active_runners: HashMap::new(),
     };
 
     let mut app = App::new(config);
-    let _ = app.run().unwrap();
+    let _ = app.run().await.unwrap();
 }

@@ -1,9 +1,19 @@
+use al::ALTransactionRunner;
+use blob::BlobTransactionRunner;
 use config::Config;
 use crossterm::{
     event::{self, Event, KeyCode},
     execute,
     terminal::{EnterAlternateScreen, LeaveAlternateScreen, disable_raw_mode, enable_raw_mode},
 };
+use alloy::primitives::Address;
+use eip1559::EIP1559TransactionRunner;
+use eip7702::EIP7702TransactionRunner;
+use legacy::LegacyTransactionRunner;
+use random::RandomTransactionRunner;
+use tokio_util::sync::CancellationToken;
+use std::time::Instant;
+use std::collections::HashMap;
 
 use errors::AppStatus;
 use ratatui::{
@@ -37,6 +47,16 @@ pub struct App {
     scroll_offset: usize,
     left_panel_width: u16, // Store the width of the left panel
     input_height: u16,     // Store the dynamic height of the input area
+    last_refresh: Instant, // Track last UI refresh time
+    tx_counts: Arc<Mutex<HashMap<String, u64>>>,
+    tokens: Arc<Mutex<HashMap<String, CancellationToken>>>,
+    
+    random_runner: Arc<Mutex<RandomTransactionRunner>>,
+    legacy_runner: Arc<Mutex<LegacyTransactionRunner>>,
+    al_runner: Arc<Mutex<ALTransactionRunner>>,
+    blob_runner: Arc<Mutex<BlobTransactionRunner>>,
+    eip1559_runner: Arc<Mutex<EIP1559TransactionRunner>>,
+    eip7702_runner: Arc<Mutex<EIP7702TransactionRunner>>,
 
     config: Config,
 }
@@ -57,11 +77,20 @@ impl App {
             scroll_offset: 0,
             left_panel_width: 70, // Default width percentage
             input_height: 3,      // Default height (1 for content + 2 for borders)
+            last_refresh: Instant::now(),
+            tx_counts: Arc::new(Mutex::new(HashMap::new())),
+            tokens: Arc::new(Mutex::new(HashMap::new())),
+            random_runner: Arc::new(Mutex::new(RandomTransactionRunner::new(config.rpc_url.clone(), config.sk.clone(), config.seed))),
+            legacy_runner: Arc::new(Mutex::new(LegacyTransactionRunner::new(config.rpc_url.clone(), config.sk.clone(), config.seed))),
+            al_runner: Arc::new(Mutex::new(ALTransactionRunner::new(config.rpc_url.clone(), config.sk.clone(), config.seed))),
+            blob_runner: Arc::new(Mutex::new(BlobTransactionRunner::new(config.rpc_url.clone(), config.sk.clone(), config.seed))),
+            eip1559_runner: Arc::new(Mutex::new(EIP1559TransactionRunner::new(config.rpc_url.clone(), config.sk.clone(), config.seed))),
+            eip7702_runner: Arc::new(Mutex::new(EIP7702TransactionRunner::new(config.rpc_url.clone(), config.sk.clone(), config.seed))),
             config,
         }
     }
 
-    pub fn run(&mut self) -> Result<(), io::Error> {
+    pub async fn run(&mut self) -> Result<(), io::Error> {
         enable_raw_mode()?;
         let mut stdout = io::stdout();
         execute!(stdout, EnterAlternateScreen)?;
@@ -95,7 +124,7 @@ impl App {
                             }
 
                             // Store current output before handling command
-                            let result = self.handle_command(command);
+                            let result = self.handle_command(command).await;
 
                             // Add output to history
                             let output = self.output.lock().unwrap().clone();
@@ -195,6 +224,38 @@ impl App {
     }
 
     fn ui(&mut self, f: &mut Frame, input: &Arc<Mutex<String>>) {
+        // Check if we need to refresh the UI (every 10ms)
+        if self.last_refresh.elapsed() >= Duration::from_millis(10) {
+            self.last_refresh = Instant::now();
+            // Update transaction counts from runners
+            let mut tx_counts = self.tx_counts.lock().unwrap();
+            for (runner, active) in &self.config.active_runners {
+                if *active {
+                    match runner.as_str() {
+                        "random" => {
+                            tx_counts.insert("random".to_string(), self.random_runner.lock().unwrap().tx_sent);
+                        }
+                        "legacy" => {
+                            tx_counts.insert("legacy".to_string(), self.legacy_runner.lock().unwrap().tx_sent);
+                        }
+                        "al" => {
+                            tx_counts.insert("al".to_string(), self.al_runner.lock().unwrap().tx_sent);
+                        }
+                        "blob" => {
+                            tx_counts.insert("blob".to_string(), self.blob_runner.lock().unwrap().tx_sent);
+                        }
+                        "eip1559" => {
+                            tx_counts.insert("eip1559".to_string(), self.eip1559_runner.lock().unwrap().tx_sent);
+                        }
+                        "eip7702" => {
+                            tx_counts.insert("eip7702".to_string(), self.eip7702_runner.lock().unwrap().tx_sent);
+                        }
+                        _ => {}
+                    }
+                }
+            }
+        }
+
         // First split the screen into left and right panels using the stored width
         let horizontal_chunks = Layout::default()
             .direction(Direction::Horizontal)
@@ -231,16 +292,62 @@ impl App {
                 Span::styled(self.status.clone(), Style::default().fg(status_color)),
             ]),
             Line::from(vec![
-                Span::styled("Transactions: ", Style::default().fg(Color::Yellow)),
-                Span::styled("0", Style::default().fg(Color::Green)),
+                Span::styled("Global Seed: ", Style::default().fg(Color::Yellow)),
+                Span::styled(
+                    self.config.global_seed.map_or("None".to_string(), |s| s.to_string()),
+                    Style::default().fg(Color::Green),
+                ),
             ]),
             Line::from(vec![
-                Span::styled("Errors: ", Style::default().fg(Color::Yellow)),
-                Span::styled("0", Style::default().fg(Color::Red)),
+                Span::styled("Global Address: ", Style::default().fg(Color::Yellow)),
+                Span::styled(
+                    self.config.global_sk.as_ref().map_or("None".to_string(), |sk| {
+                        Address::from_private_key(sk).to_string()
+                    }),
+                    Style::default().fg(Color::Green),
+                ),
             ]),
         ];
 
-        let stats_text = Text::from(stats_lines);
+        // Add active runners information with transaction counts
+        let mut active_runners = Vec::new();
+        let tx_counts = self.tx_counts.lock().unwrap();
+        for (runner, active) in &self.config.active_runners {
+            if *active {
+                let seed = self.config.get_runner_seed(runner);
+                let address = Address::from_private_key(self.config.get_runner_sk(runner));
+                let tx_count = tx_counts.get(runner).unwrap_or(&0);
+                active_runners.push(Line::from(vec![
+                    Span::styled(format!("{} Runner: ", runner), Style::default().fg(Color::Yellow)),
+                    Span::styled(format!("seed={}, address={}, txs={}", seed, address, tx_count), Style::default().fg(Color::Green)),
+                ]));
+            }
+        }
+
+        // Add available runners information
+        let mut available_runners = Vec::new();
+        for runner in ["random", "legacy", "al", "blob", "eip1559", "eip7702"] {
+            let seed = self.config.get_runner_seed(runner);
+            let address = Address::from_private_key(self.config.get_runner_sk(runner));
+            let is_active = self.config.is_runner_active(runner);
+            let status_color = if is_active { Color::Green } else { Color::Gray };
+            let tx_count = tx_counts.get(runner).unwrap_or(&0);
+            
+            available_runners.push(Line::from(vec![
+                Span::styled(format!("{}: ", runner), Style::default().fg(Color::Yellow)),
+                Span::styled(format!("seed={}, address={}, txs={}", seed, address, tx_count), Style::default().fg(status_color)),
+            ]));
+        }
+
+        let mut all_lines = stats_lines;
+        all_lines.push(Line::from(""));
+        all_lines.push(Line::from(vec![Span::styled("Active Runners:", Style::default().fg(Color::Yellow))]));
+        all_lines.extend(active_runners);
+        all_lines.push(Line::from(""));
+        all_lines.push(Line::from(vec![Span::styled("Available Runners:", Style::default().fg(Color::Yellow))]));
+        all_lines.extend(available_runners);
+
+        let stats_text = Text::from(all_lines);
 
         // Calculate the height of the stats text to center it vertically
         let stats_height = stats_text.height() as u16;
