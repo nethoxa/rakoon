@@ -4,23 +4,24 @@ use alloy::{
     rpc::types::TransactionRequest,
     signers::{k256::ecdsa::SigningKey, local::PrivateKeySigner},
 };
-use common::{builder::Builder, types::Backend};
+use common::types::Backend;
 use rand::{SeedableRng, rngs::StdRng};
+use crate::builder::Builder;
 
-pub struct EIP7702TransactionRunner {
+pub struct RandomTransactionRunner {
     pub sk: SigningKey,
     pub seed: u64,
     pub tx_sent: u64,
     pub provider: Backend,
 }
 
-impl Builder for EIP7702TransactionRunner {
+impl Builder for RandomTransactionRunner {
     fn provider(&self) -> &Backend {
         &self.provider
     }
 }
 
-impl EIP7702TransactionRunner {
+impl RandomTransactionRunner {
     pub fn new(rpc_url: String, sk: SigningKey, seed: u64) -> Self {
         let provider = ProviderBuilder::new()
             .wallet::<PrivateKeySigner>(sk.clone().into())
@@ -34,24 +35,28 @@ impl EIP7702TransactionRunner {
         let sender = Address::from_private_key(&self.sk);
 
         loop {
-            let tx = self.create_eip7702_transaction(&mut random, sender).await;
+            let tx = self.create_random_transaction(&mut random, sender).await;
             let _ = self.provider.send_transaction(tx).await;
             self.tx_sent += 1;
         }
     }
 
-    pub async fn create_eip7702_transaction(
+    pub async fn create_random_transaction(
         &self,
         random: &mut StdRng,
         sender: Address,
     ) -> TransactionRequest {
         let to = self.to(random);
 
+        let gas_price = self.gas_price(random).await;
+
         let max_fee_per_gas = self.max_fee_per_gas(random);
 
         let max_priority_fee_per_gas = self.max_priority_fee_per_gas(random).await;
 
-        let gas_limit = self.gas(random);
+        let max_fee_per_blob_gas = self.max_fee_per_blob_gas(random).await;
+
+        let gas = self.gas(random);
 
         let value = self.value(random, sender).await;
 
@@ -63,36 +68,39 @@ impl EIP7702TransactionRunner {
 
         let access_list = self.access_list(random);
 
-        let authorization_list = self.authorization_list(random);
+        let transaction_type = self.transaction_type(random);
 
-        // EIP-7702 transaction type
-        let transaction_type = 5;
+        let blob_versioned_hashes = self.blob_versioned_hashes(random);
+
+        let sidecar = self.sidecar(random);
+
+        let authorization_list = self.authorization_list(random);
 
         TransactionRequest {
             from: Some(sender),
             to: Some(to),
-            gas_price: None,
+            gas_price: Some(gas_price),
             max_fee_per_gas: Some(max_fee_per_gas),
             max_priority_fee_per_gas: Some(max_priority_fee_per_gas),
-            max_fee_per_blob_gas: None,
-            gas: Some(gas_limit),
+            max_fee_per_blob_gas: Some(max_fee_per_blob_gas),
+            gas: Some(gas),
             value: Some(value),
             input,
             nonce: Some(nonce),
             chain_id: Some(chain_id),
             access_list: Some(access_list),
             transaction_type: Some(transaction_type),
-            blob_versioned_hashes: None,
-            sidecar: None,
+            blob_versioned_hashes: Some(blob_versioned_hashes),
+            sidecar: Some(sidecar),
             authorization_list: Some(authorization_list),
         }
     }
 }
 
 #[tokio::test]
-async fn test_eip7702_transaction_runner() {
+async fn test_random_transaction_runner() {
     let mut rng = StdRng::seed_from_u64(1);
-    let runner = EIP7702TransactionRunner::new(
+    let runner = RandomTransactionRunner::new(
         "http://localhost:8545".to_string(),
         SigningKey::from_slice(
             &alloy::hex::decode(
@@ -103,6 +111,6 @@ async fn test_eip7702_transaction_runner() {
         .unwrap(),
         1,
     );
-    let tx = runner.create_eip7702_transaction(&mut rng, Address::ZERO).await;
+    let tx = runner.create_random_transaction(&mut rng, Address::ZERO).await;
     println!("tx: {:#?}", &tx);
 }

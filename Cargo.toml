@@ -12,7 +12,7 @@ members = [
     "bin", 
     "crates/mutator", 
     "crates/common", 
-    "crates/app", "crates/random", "crates/legacy", "crates/al", "crates/eip1559", "crates/eip7702", "crates/blob"]
+    "crates/app", "crates/runners"]
 resolver = "3"
 
 [workspace.dependencies]

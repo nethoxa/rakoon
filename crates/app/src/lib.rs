@@ -1,19 +1,13 @@
-use al::ALTransactionRunner;
+use runners::{al::ALTransactionRunner, blob::BlobTransactionRunner, eip1559::EIP1559TransactionRunner, eip7702::EIP7702TransactionRunner, legacy::LegacyTransactionRunner, random::RandomTransactionRunner};
 use alloy::primitives::Address;
-use blob::BlobTransactionRunner;
 use config::Config;
 use crossterm::{
     event::{self, Event, KeyCode},
     execute,
     terminal::{EnterAlternateScreen, LeaveAlternateScreen, disable_raw_mode, enable_raw_mode},
 };
-use eip1559::EIP1559TransactionRunner;
-use eip7702::EIP7702TransactionRunner;
-use legacy::LegacyTransactionRunner;
-use random::RandomTransactionRunner;
 use std::{collections::HashMap, time::Instant};
 use tokio::task::JoinHandle;
-
 use errors::AppStatus;
 use ratatui::{
     Frame, Terminal,

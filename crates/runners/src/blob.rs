@@ -4,27 +4,29 @@ use alloy::{
     rpc::types::TransactionRequest,
     signers::{k256::ecdsa::SigningKey, local::PrivateKeySigner},
 };
-use common::{builder::Builder, types::Backend};
+use common::types::Backend;
 use rand::{SeedableRng, rngs::StdRng};
+use crate::builder::Builder;
 
-pub struct LegacyTransactionRunner {
+pub struct BlobTransactionRunner {
     pub sk: SigningKey,
     pub seed: u64,
     pub tx_sent: u64,
     pub provider: Backend,
 }
 
-impl Builder for LegacyTransactionRunner {
+impl Builder for BlobTransactionRunner {
     fn provider(&self) -> &Backend {
         &self.provider
     }
 }
 
-impl LegacyTransactionRunner {
+impl BlobTransactionRunner {
     pub fn new(rpc_url: String, sk: SigningKey, seed: u64) -> Self {
         let provider = ProviderBuilder::new()
             .wallet::<PrivateKeySigner>(sk.clone().into())
             .connect_http(rpc_url.parse().unwrap());
+
         Self { sk, seed, tx_sent: 0, provider }
     }
 
@@ -33,13 +35,13 @@ impl LegacyTransactionRunner {
         let sender = Address::from_private_key(&self.sk);
 
         loop {
-            let tx = self.create_legacy_transaction(&mut random, sender).await;
+            let tx = self.create_blob_transaction(&mut random, sender).await;
             let _ = self.provider.send_transaction(tx).await;
             self.tx_sent += 1;
         }
     }
 
-    pub async fn create_legacy_transaction(
+    pub async fn create_blob_transaction(
         &self,
         random: &mut StdRng,
         sender: Address,
@@ -47,6 +49,12 @@ impl LegacyTransactionRunner {
         let to = self.to(random);
 
         let gas_price = self.gas_price(random).await;
+
+        let max_fee_per_gas = self.max_fee_per_gas(random);
+
+        let max_priority_fee_per_gas = self.max_priority_fee_per_gas(random).await;
+
+        let max_fee_per_blob_gas = self.max_fee_per_blob_gas(random).await;
 
         let gas = self.gas(random);
 
@@ -58,33 +66,40 @@ impl LegacyTransactionRunner {
 
         let chain_id = self.chain_id(random).await;
 
-        let transaction_type = 0;
+        let access_list = self.access_list(random);
+
+        let blob_versioned_hashes = self.blob_versioned_hashes(random);
+
+        let sidecar = self.sidecar(random);
+
+        // EIP-4844 transaction type
+        let transaction_type = 4;
 
         TransactionRequest {
             from: Some(sender),
             to: Some(to),
             gas_price: Some(gas_price),
-            max_fee_per_gas: None,
-            max_priority_fee_per_gas: None,
-            max_fee_per_blob_gas: None,
+            max_fee_per_gas: Some(max_fee_per_gas),
+            max_priority_fee_per_gas: Some(max_priority_fee_per_gas),
+            max_fee_per_blob_gas: Some(max_fee_per_blob_gas),
             gas: Some(gas),
             value: Some(value),
             input,
             nonce: Some(nonce),
             chain_id: Some(chain_id),
-            access_list: None,
+            access_list: Some(access_list),
             transaction_type: Some(transaction_type),
-            blob_versioned_hashes: None,
-            sidecar: None,
+            blob_versioned_hashes: Some(blob_versioned_hashes),
+            sidecar: Some(sidecar),
             authorization_list: None,
         }
     }
 }
 
 #[tokio::test]
-async fn test_legacy_transaction_runner() {
+async fn test_blob_transaction_runner() {
     let mut rng = StdRng::seed_from_u64(1);
-    let runner = LegacyTransactionRunner::new(
+    let runner = BlobTransactionRunner::new(
         "http://localhost:8545".to_string(),
         SigningKey::from_slice(
             &alloy::hex::decode(
@@ -95,6 +110,6 @@ async fn test_legacy_transaction_runner() {
         .unwrap(),
         1,
     );
-    let tx = runner.create_legacy_transaction(&mut rng, Address::ZERO).await;
+    let tx = runner.create_blob_transaction(&mut rng, Address::ZERO).await;
     println!("tx: {:#?}", &tx);
 }

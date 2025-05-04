@@ -4,23 +4,24 @@ use alloy::{
     rpc::types::TransactionRequest,
     signers::{k256::ecdsa::SigningKey, local::PrivateKeySigner},
 };
-use common::{builder::Builder, types::Backend};
+use common::types::Backend;
 use rand::{SeedableRng, rngs::StdRng};
+use crate::builder::Builder;
 
-pub struct EIP1559TransactionRunner {
+pub struct ALTransactionRunner {
     pub sk: SigningKey,
     pub seed: u64,
     pub tx_sent: u64,
     pub provider: Backend,
 }
 
-impl Builder for EIP1559TransactionRunner {
+impl Builder for ALTransactionRunner {
     fn provider(&self) -> &Backend {
         &self.provider
     }
 }
 
-impl EIP1559TransactionRunner {
+impl ALTransactionRunner {
     pub fn new(rpc_url: String, sk: SigningKey, seed: u64) -> Self {
         let provider = ProviderBuilder::new()
             .wallet::<PrivateKeySigner>(sk.clone().into())
@@ -34,22 +35,20 @@ impl EIP1559TransactionRunner {
         let sender = Address::from_private_key(&self.sk);
 
         loop {
-            let tx = self.create_eip1559_transaction(&mut random, sender).await;
+            let tx = self.create_access_list_transaction(&mut random, sender).await;
             let _ = self.provider.send_transaction(tx).await;
             self.tx_sent += 1;
         }
     }
 
-    pub async fn create_eip1559_transaction(
+    pub async fn create_access_list_transaction(
         &self,
         random: &mut StdRng,
         sender: Address,
     ) -> TransactionRequest {
         let to = self.to(random);
 
-        let max_fee_per_gas = self.max_fee_per_gas(random);
-
-        let max_priority_fee_per_gas = self.max_priority_fee_per_gas(random).await;
+        let gas_price = self.gas_price(random).await;
 
         let gas_limit = self.gas(random);
 
@@ -63,15 +62,15 @@ impl EIP1559TransactionRunner {
 
         let access_list = self.access_list(random);
 
-        // EIP-1559 transaction type
-        let transaction_type = 2;
+        // EIP-2930 transaction type
+        let transaction_type = 1;
 
         TransactionRequest {
             from: Some(sender),
             to: Some(to),
-            gas_price: None,
-            max_fee_per_gas: Some(max_fee_per_gas),
-            max_priority_fee_per_gas: Some(max_priority_fee_per_gas),
+            gas_price: Some(gas_price),
+            max_fee_per_gas: None,
+            max_priority_fee_per_gas: None,
             max_fee_per_blob_gas: None,
             gas: Some(gas_limit),
             value: Some(value),
@@ -88,9 +87,9 @@ impl EIP1559TransactionRunner {
 }
 
 #[tokio::test]
-async fn test_eip1559_transaction_runner() {
+async fn test_access_list_transaction_runner() {
     let mut rng = StdRng::seed_from_u64(1);
-    let runner = EIP1559TransactionRunner::new(
+    let runner = ALTransactionRunner::new(
         "http://localhost:8545".to_string(),
         SigningKey::from_slice(
             &alloy::hex::decode(
@@ -101,6 +100,6 @@ async fn test_eip1559_transaction_runner() {
         .unwrap(),
         1,
     );
-    let tx = runner.create_eip1559_transaction(&mut rng, Address::ZERO).await;
+    let tx = runner.create_access_list_transaction(&mut rng, Address::ZERO).await;
     println!("tx: {:#?}", &tx);
 }

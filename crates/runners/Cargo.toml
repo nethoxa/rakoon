@@ -1,11 +1,11 @@
 [package]
-name = "eip1559"
+name = "runners"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
 
 [dependencies]
-common = { path = "../common" }
-alloy = { workspace = true }
 rand = { workspace = true }
 tokio = { workspace = true }
+alloy = { workspace = true }
+common = { path = "../common" }

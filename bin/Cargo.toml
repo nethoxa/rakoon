@@ -16,9 +16,4 @@ alloy = { workspace = true }
 
 app = { path = "../crates/app" }
 common = { path = "../crates/common" }
-al = { path = "../crates/al" }
-blob = { path = "../crates/blob" }
-eip1559 = { path = "../crates/eip1559" }
-eip7702 = { path = "../crates/eip7702" }
-legacy = { path = "../crates/legacy" }
-random = { path = "../crates/random" }
+runners = { path = "../crates/runners" }

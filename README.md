@@ -25,3 +25,5 @@ La idea es que puedas lanzar y apagar fuzzers con seeds arbitrarias sin apagar e
 Tienes que añadir más mutatos, como por ejemplo auths duplicadas, auths duplicadas de diferentes usuarios, signatures off the curve, access lists con duplicados...
 
 Tambien solo fuzzea valid tx types, deberias poder mandar types random
+
+El counter de txs sent no funciona/no implementado

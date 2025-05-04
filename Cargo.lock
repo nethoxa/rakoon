@@ -18,16 +18,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "512761e0bb2578dd7380c6baaa0f4ce03e84f95e960231d1dec8bf4d7d6e2627"
 
 [[package]]
-name = "al"
-version = "0.1.0"
-dependencies = [
- "alloy",
- "common",
- "rand 0.9.1",
- "tokio",
-]
-
-[[package]]
 name = "allocator-api2"
 version = "0.2.21"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -665,17 +655,12 @@ dependencies = [
 name = "app"
 version = "0.1.0"
 dependencies = [
- "al",
  "alloy",
- "blob",
  "colored",
  "common",
  "crossterm 0.29.0",
- "eip1559",
- "eip7702",
- "legacy",
- "random",
  "ratatui",
+ "runners",
  "tokio",
 ]
 
@@ -951,16 +936,6 @@ dependencies = [
  "radium",
  "tap",
  "wyz",
-]
-
-[[package]]
-name = "blob"
-version = "0.1.0"
-dependencies = [
- "alloy",
- "common",
- "rand 0.9.1",
- "tokio",
 ]
 
 [[package]]
@@ -1485,26 +1460,6 @@ dependencies = [
  "serdect",
  "signature",
  "spki",
-]
-
-[[package]]
-name = "eip1559"
-version = "0.1.0"
-dependencies = [
- "alloy",
- "common",
- "rand 0.9.1",
- "tokio",
-]
-
-[[package]]
-name = "eip7702"
-version = "0.1.0"
-dependencies = [
- "alloy",
- "common",
- "rand 0.9.1",
- "tokio",
 ]
 
 [[package]]
@@ -2270,16 +2225,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "bbd2bcb4c963f2ddae06a2efc7e9f3591312473c50c6685e1f298068316e66fe"
 
 [[package]]
-name = "legacy"
-version = "0.1.0"
-dependencies = [
- "alloy",
- "common",
- "rand 0.9.1",
- "tokio",
-]
-
-[[package]]
 name = "libc"
 version = "0.2.172"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2793,18 +2738,13 @@ checksum = "dc33ff2d4973d518d823d61aa239014831e521c75da58e3df4840d3f47749d09"
 name = "rakoon"
 version = "0.1.0"
 dependencies = [
- "al",
  "alloy",
  "app",
- "blob",
  "clap",
  "common",
  "crossterm 0.29.0",
- "eip1559",
- "eip7702",
- "legacy",
- "random",
  "ratatui",
+ "runners",
  "tokio",
 ]
 
@@ -2877,16 +2817,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d25bf25ec5ae4a3f1b92f929810509a2f53d7dca2f50b794ff57e3face536c8f"
 dependencies = [
  "rand_core 0.6.4",
-]
-
-[[package]]
-name = "random"
-version = "0.1.0"
-dependencies = [
- "alloy",
- "common",
- "rand 0.9.1",
- "tokio",
 ]
 
 [[package]]
@@ -3017,6 +2947,16 @@ name = "ruint-macro"
 version = "1.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "48fd7bd8a6377e15ad9d42a8ec25371b94ddc67abe7c8b9127bec79bebaaae18"
+
+[[package]]
+name = "runners"
+version = "0.1.0"
+dependencies = [
+ "alloy",
+ "common",
+ "rand 0.9.1",
+ "tokio",
+]
 
 [[package]]
 name = "rustc-demangle"
