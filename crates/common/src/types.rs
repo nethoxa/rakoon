@@ -1,5 +1,3 @@
-pub trait GasPriceFuture: std::future::Future<Output = u128> + Send {}
-
 pub type Backend = alloy::providers::fillers::FillProvider<
     alloy::providers::fillers::JoinFill<
         alloy::providers::fillers::JoinFill<

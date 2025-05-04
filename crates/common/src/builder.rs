@@ -1,10 +1,19 @@
-use alloy::{
-    consensus::BlobTransactionSidecar, eips::{eip4844::BYTES_PER_BLOB, eip7702::SignedAuthorization}, primitives::{Address, Bytes, FixedBytes, TxKind, U256}, providers::Provider, rpc::types::{AccessList, AccessListItem, Authorization, TransactionInput}
+use crate::{
+    constants::{
+        MAX_ACCESS_LIST_LENGTH, MAX_ACCESSED_KEYS_LENGTH, MAX_AUTHORIZATION_LIST_LENGTH,
+        MAX_BLOB_SIDECAR_LENGTH, MAX_BLOB_VERSIONED_HASHES_LENGTH, MAX_INPUT_LENGTH,
+        MAX_TRANSACTION_TYPE,
+    },
+    types::Backend,
 };
-use crate::{constants::{
-    MAX_ACCESSED_KEYS_LENGTH, MAX_ACCESS_LIST_LENGTH, MAX_AUTHORIZATION_LIST_LENGTH, MAX_BLOB_SIDECAR_LENGTH, MAX_BLOB_VERSIONED_HASHES_LENGTH, MAX_INPUT_LENGTH, MAX_TRANSACTION_TYPE
-}, types::GasPriceFuture, Backend};
-use rand::{Rng, RngCore, SeedableRng, random_bool, rngs::StdRng};
+use alloy::{
+    consensus::BlobTransactionSidecar,
+    eips::{eip4844::BYTES_PER_BLOB, eip7702::SignedAuthorization},
+    primitives::{Address, Bytes, FixedBytes, TxKind, U256},
+    providers::Provider,
+    rpc::types::{AccessList, AccessListItem, Authorization, TransactionInput},
+};
+use rand::{Rng, RngCore, random_bool, rngs::StdRng};
 
 pub trait Builder {
     fn provider(&self) -> &Backend;
@@ -13,88 +22,117 @@ pub trait Builder {
 
     fn to(&self, random: &mut StdRng) -> TxKind {
         if random_bool(0.5) {
-            if random_bool(0.5) { TxKind::Create } else { TxKind::Call(self.random_to(random)) }
+            TxKind::Create
         } else {
-            if random_bool(0.5) { TxKind::Create } else { TxKind::Call(Address::ZERO) }
+            TxKind::Call({
+                let mut addr = [0u8; 20];
+                random.fill(&mut addr);
+                Address::from(addr)
+            })
         }
-    }
-
-    fn random_to(&self, random: &mut StdRng) -> Address {
-        let mut addr = [0u8; 20];
-        random.fill(&mut addr);
-        Address::from(addr)
     }
 
     // ------------------------------------------------------------
 
-    fn gas_price(&self, random: &mut StdRng) -> impl GasPriceFuture {
-        async move {
-            if random_bool(0.5) {
-                self.random_gas_price(random)
-            } else {
-                self.provider().get_gas_price().await.unwrap()
-            }
+    #[allow(async_fn_in_trait)]
+    async fn gas_price(&self, random: &mut StdRng) -> u128 {
+        if random_bool(0.5) {
+            self.provider().get_gas_price().await.unwrap()
+        } else {
+            random.random::<u128>()
         }
     }
 
-    fn random_gas_price(&self, random: &mut StdRng) -> u128 {
+    // ------------------------------------------------------------
+
+    // [nethoxa] this should be better implemented
+    fn max_fee_per_gas(&self, random: &mut StdRng) -> u128 {
         random.random::<u128>()
     }
 
     // ------------------------------------------------------------
 
-    
-
-    fn random_bytes(&self, length: usize, random: &mut StdRng) -> Bytes {
-        let mut bytes = vec![0u8; length];
-        random.fill(&mut bytes[..]);
-        bytes.into()
+    #[allow(async_fn_in_trait)]
+    async fn max_priority_fee_per_gas(&self, random: &mut StdRng) -> u128 {
+        if random_bool(0.5) {
+            self.provider().get_max_priority_fee_per_gas().await.unwrap()
+        } else {
+            random.random::<u128>()
+        }
     }
 
-    fn random_address(&self, random: &mut StdRng) -> Address {
-        let mut addr = [0u8; 20];
-        random.fill(&mut addr);
-        Address::from(addr)
+    // ------------------------------------------------------------
+
+    #[allow(async_fn_in_trait)]
+    async fn max_fee_per_blob_gas(&self, random: &mut StdRng) -> u128 {
+        if random_bool(0.5) {
+            self.provider().get_blob_base_fee().await.unwrap()
+        } else {
+            random.random::<u128>()
+        }
     }
 
-    fn random_max_fee_per_gas(&self, random: &mut StdRng) -> u128 {
-        random.random::<u128>()
-    }
+    // ------------------------------------------------------------
 
-    fn random_max_priority_fee_per_gas(&self, random: &mut StdRng) -> u128 {
-        random.random::<u128>()
-    }
-
-    fn random_max_fee_per_blob_gas(&self, random: &mut StdRng) -> u128 {
-        random.random::<u128>()
-    }
-
-    fn random_gas(&self, random: &mut StdRng) -> u64 {
+    // [nethoxa] should implement a call to gas estimation
+    fn gas(&self, random: &mut StdRng) -> u64 {
         random.next_u64()
+    }
+
+    // ------------------------------------------------------------
+
+    #[allow(async_fn_in_trait)]
+    async fn value(&self, random: &mut StdRng, sender: Address) -> U256 {
+        if random_bool(0.5) {
+            self.provider().get_account(sender).await.unwrap().balance / U256::from(100_000_000)
+        } else {
+            self.random_u256(random)
+        }
     }
 
     fn random_u256(&self, random: &mut StdRng) -> U256 {
         let mut bytes = [0u8; 32];
         random.fill(&mut bytes);
-
         U256::from_be_slice(&bytes)
     }
 
-    fn random_u8(&self, random: &mut StdRng) -> u8 {
-        random.random_range(0..=u8::MAX)
+    // ------------------------------------------------------------
+
+    fn input(&self, random: &mut StdRng) -> TransactionInput {
+        if random_bool(0.5) {
+            let length = random.random_range(0..=MAX_INPUT_LENGTH);
+            TransactionInput::new(self.random_bytes(length, random))
+        } else {
+            TransactionInput::from(vec![])
+        }
     }
 
-    fn random_input(&self, random: &mut StdRng) -> TransactionInput {
-        let length = random.random_range(0..=MAX_INPUT_LENGTH);
-        TransactionInput::new(self.random_bytes(length, random))
+    // ------------------------------------------------------------
+
+    #[allow(async_fn_in_trait)]
+    async fn nonce(&self, random: &mut StdRng, sender: Address) -> u64 {
+        if random_bool(0.5) {
+            self.provider().get_account(sender).await.unwrap().nonce
+        } else {
+            random.next_u64()
+        }
     }
 
-    fn random_nonce(&self, random: &mut StdRng) -> u64 {
-        random.next_u64()
+    // ------------------------------------------------------------
+
+    #[allow(async_fn_in_trait)]
+    async fn chain_id(&self, random: &mut StdRng) -> u64 {
+        if random_bool(0.5) {
+            self.provider().get_chain_id().await.unwrap()
+        } else {
+            random.next_u64()
+        }
     }
 
-    fn random_chain_id(&self, random: &mut StdRng) -> u64 {
-        random.next_u64()
+    // ------------------------------------------------------------
+
+    fn access_list(&self, random: &mut StdRng) -> AccessList {
+        if random_bool(0.5) { self.random_access_list(random) } else { AccessList::from(vec![]) }
     }
 
     fn random_access_list(&self, random: &mut StdRng) -> AccessList {
@@ -126,8 +164,17 @@ pub trait Builder {
         AccessList(items)
     }
 
-    fn random_transaction_type(&self, random: &mut StdRng) -> u8 {
+    // ------------------------------------------------------------
+
+    fn transaction_type(&self, random: &mut StdRng) -> u8 {
+        // [nethoxa] should we send tx with wrong transaction type?
         random.random_range(0..MAX_TRANSACTION_TYPE)
+    }
+
+    // ------------------------------------------------------------
+
+    fn blob_versioned_hashes(&self, random: &mut StdRng) -> Vec<FixedBytes<32>> {
+        if random_bool(0.5) { self.random_blob_versioned_hashes(random) } else { vec![] }
     }
 
     fn random_blob_versioned_hashes(&self, random: &mut StdRng) -> Vec<FixedBytes<32>> {
@@ -149,8 +196,18 @@ pub trait Builder {
         hashes
     }
 
+    // ------------------------------------------------------------
+
+    fn sidecar(&self, random: &mut StdRng) -> BlobTransactionSidecar {
+        if random_bool(0.5) {
+            self.random_sidecar(random)
+        } else {
+            BlobTransactionSidecar::new(vec![], vec![], vec![])
+        }
+    }
+
     fn random_sidecar(&self, random: &mut StdRng) -> BlobTransactionSidecar {
-        let same_length = random_bool(0.75); // [nethoxa] check as != length should not be the common case
+        let same_length = random_bool(0.75);
         if same_length {
             let length = random.random_range(0..MAX_BLOB_SIDECAR_LENGTH);
             let mut blobs = vec![];
@@ -238,6 +295,12 @@ pub trait Builder {
         }
     }
 
+    // ------------------------------------------------------------
+
+    fn authorization_list(&self, random: &mut StdRng) -> Vec<SignedAuthorization> {
+        if random_bool(0.5) { self.random_authorization_list(random) } else { vec![] }
+    }
+
     fn random_authorization_list(&self, random: &mut StdRng) -> Vec<SignedAuthorization> {
         let length = random.random_range(0..=MAX_AUTHORIZATION_LIST_LENGTH);
         let mut authorizations = vec![];
@@ -245,11 +308,11 @@ pub trait Builder {
         for _ in 0..length {
             let chain_id = self.random_u256(random);
             let addr = self.random_address(random);
-            let nonce = self.random_nonce(random);
+            let nonce = random.next_u64();
 
             let auth = Authorization { chain_id, address: addr, nonce };
 
-            let y_parity = self.random_u8(random);
+            let y_parity = random.random::<u8>();
             let r = self.random_u256(random);
             let s = self.random_u256(random);
 
@@ -259,5 +322,19 @@ pub trait Builder {
         }
 
         authorizations
+    }
+
+    // ------------------------------------------------------------
+
+    fn random_bytes(&self, length: usize, random: &mut StdRng) -> Bytes {
+        let mut bytes = vec![0u8; length];
+        random.fill(&mut bytes[..]);
+        bytes.into()
+    }
+
+    fn random_address(&self, random: &mut StdRng) -> Address {
+        let mut addr = [0u8; 20];
+        random.fill(&mut addr);
+        Address::from(addr)
     }
 }
