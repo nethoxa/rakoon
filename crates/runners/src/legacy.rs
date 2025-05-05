@@ -1,18 +1,23 @@
 use crate::builder::Builder;
 use alloy::{
-    primitives::Address,
+    consensus::TxLegacy,
+    primitives::{Address, TxHash},
     providers::{Provider, ProviderBuilder},
     rpc::types::TransactionRequest,
     signers::{k256::ecdsa::SigningKey, local::PrivateKeySigner},
     transports::http::reqwest::Url,
 };
+use alloy_rlp::Encodable;
 use common::types::Backend;
-use rand::{SeedableRng, rngs::StdRng};
+use mutator::Mutator;
+use rand::{SeedableRng, random_bool, rngs::StdRng};
+
 pub struct LegacyTransactionRunner {
     pub sk: SigningKey,
     pub seed: u64,
-    pub tx_sent: u64,
     pub provider: Backend,
+    pub current_tx: Vec<u8>,
+    pub mutator: Mutator,
 }
 
 impl Builder for LegacyTransactionRunner {
@@ -22,11 +27,14 @@ impl Builder for LegacyTransactionRunner {
 }
 
 impl LegacyTransactionRunner {
-    pub fn new(rpc_url: Url, sk: SigningKey, seed: u64) -> Self {
+    pub fn new(rpc_url: Url, sk: SigningKey, seed: u64, max_operations_per_mutation: u64) -> Self {
         let provider = ProviderBuilder::new()
             .wallet::<PrivateKeySigner>(sk.clone().into())
             .connect_http(rpc_url);
-        Self { sk, seed, tx_sent: 0, provider }
+
+        let mutator = Mutator::new(max_operations_per_mutation, seed);
+
+        Self { sk, seed, current_tx: vec![], provider, mutator }
     }
 
     pub async fn run(&mut self) {
@@ -34,9 +42,20 @@ impl LegacyTransactionRunner {
         let sender = Address::from_private_key(&self.sk);
 
         loop {
-            let tx = self.create_legacy_transaction(&mut random, sender).await;
-            let _ = self.provider.send_transaction_unsafe(tx).await;
-            self.tx_sent += 1;
+            // 10% chance to re-generate the transaction
+            if random_bool(0.1) || self.current_tx.is_empty() {
+                let (request, tx) = self.create_legacy_transaction(&mut random, sender).await;
+                tx.encode(&mut self.current_tx);
+
+                let _ = self.provider.send_transaction_unsafe(request).await;
+            } else {
+                self.mutator.mutate(&mut self.current_tx);
+                let _: Result<TxHash, _> = self
+                    .provider
+                    .client()
+                    .request("eth_sendRawTransaction", &self.current_tx)
+                    .await;
+            }
         }
     }
 
@@ -44,24 +63,19 @@ impl LegacyTransactionRunner {
         &self,
         random: &mut StdRng,
         sender: Address,
-    ) -> TransactionRequest {
-        let to = self.to(random);
-
-        let gas_price = self.gas_price(random).await;
-
-        let gas = self.gas(random);
-
-        let value = self.value(random, sender).await;
-
-        let input = self.input(random);
-
-        let nonce = self.nonce(random, sender).await;
-
-        let chain_id = self.chain_id(random).await;
-
+    ) -> (TransactionRequest, TxLegacy) {
+        // Legacy transaction type
         let transaction_type = 0;
 
-        TransactionRequest {
+        let to = self.to(random);
+        let gas_price = self.gas_price(random).await;
+        let gas = self.gas(random);
+        let value = self.value(random, sender).await;
+        let input = self.input(random);
+        let nonce = self.nonce(random, sender).await;
+        let chain_id = self.chain_id(random).await;
+
+        let request = TransactionRequest {
             from: Some(sender),
             to: Some(to),
             gas_price: Some(gas_price),
@@ -70,7 +84,7 @@ impl LegacyTransactionRunner {
             max_fee_per_blob_gas: None,
             gas: Some(gas),
             value: Some(value),
-            input,
+            input: input.clone(),
             nonce: Some(nonce),
             chain_id: Some(chain_id),
             access_list: None,
@@ -78,7 +92,19 @@ impl LegacyTransactionRunner {
             blob_versioned_hashes: None,
             sidecar: None,
             authorization_list: None,
-        }
+        };
+
+        let tx = TxLegacy {
+            to,
+            value,
+            chain_id: Some(chain_id),
+            nonce,
+            gas_price,
+            gas_limit: gas,
+            input: input.into_input().unwrap(),
+        };
+
+        (request, tx)
     }
 }
 
@@ -95,6 +121,7 @@ async fn test_legacy_transaction_runner() {
         )
         .unwrap(),
         1,
+        1000,
     );
     let tx = runner.create_legacy_transaction(&mut rng, Address::ZERO).await;
     println!("tx: {:#?}", &tx);

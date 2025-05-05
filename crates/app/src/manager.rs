@@ -28,8 +28,9 @@ impl App {
                 let handle = tokio::spawn({
                     let rpc = rpc.clone();
                     let sk = sk.clone();
+                    let max_operations_per_mutation = self.max_operations_per_mutation;
                     async move {
-                        let mut runner = ALTransactionRunner::new(rpc, sk, seed);
+                        let mut runner = ALTransactionRunner::new(rpc, sk, seed, max_operations_per_mutation);
                         runner.run().await;
                     }
                 });
@@ -40,8 +41,9 @@ impl App {
                 let handle = tokio::spawn({
                     let rpc = rpc.clone();
                     let sk = sk.clone();
+                    let max_operations_per_mutation = self.max_operations_per_mutation;
                     async move {
-                        let mut runner = BlobTransactionRunner::new(rpc, sk, seed);
+                        let mut runner = BlobTransactionRunner::new(rpc, sk, seed, max_operations_per_mutation);
                         runner.run().await;
                     }
                 });
@@ -52,8 +54,9 @@ impl App {
                 let handle = tokio::spawn({
                     let rpc = rpc.clone();
                     let sk = sk.clone();
+                    let max_operations_per_mutation = self.max_operations_per_mutation;
                     async move {
-                        let mut runner = EIP1559TransactionRunner::new(rpc, sk, seed);
+                        let mut runner = EIP1559TransactionRunner::new(rpc, sk, seed, max_operations_per_mutation);
                         runner.run().await;
                     }
                 });
@@ -64,8 +67,9 @@ impl App {
                 let handle = tokio::spawn({
                     let rpc = rpc.clone();
                     let sk = sk.clone();
+                    let max_operations_per_mutation = self.max_operations_per_mutation;
                     async move {
-                        let mut runner = EIP7702TransactionRunner::new(rpc, sk, seed);
+                        let mut runner = EIP7702TransactionRunner::new(rpc, sk, seed, max_operations_per_mutation);
                         runner.run().await;
                     }
                 });
@@ -76,8 +80,9 @@ impl App {
                 let handle = tokio::spawn({
                     let rpc = rpc.clone();
                     let sk = sk.clone();
+                    let max_operations_per_mutation = self.max_operations_per_mutation;
                     async move {
-                        let mut runner = LegacyTransactionRunner::new(rpc, sk, seed);
+                        let mut runner = LegacyTransactionRunner::new(rpc, sk, seed, max_operations_per_mutation);
                         runner.run().await;
                     }
                 });
@@ -88,8 +93,9 @@ impl App {
                 let handle = tokio::spawn({
                     let rpc = rpc.clone();
                     let sk = sk.clone();
+                    let max_operations_per_mutation = self.max_operations_per_mutation;
                     async move {
-                        let mut runner = RandomTransactionRunner::new(rpc, sk, seed);
+                        let mut runner = RandomTransactionRunner::new(rpc, sk, seed, max_operations_per_mutation);
                         runner.run().await;
                     }
                 });

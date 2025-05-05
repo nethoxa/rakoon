@@ -25,7 +25,7 @@ use runners::{
 use std::{
     collections::HashMap,
     io,
-    time::{Duration, Instant},
+    time::Duration,
 };
 use tokio::task::JoinHandle;
 pub mod errors;
@@ -51,9 +51,8 @@ pub struct App {
     // the UI.
     rpc_url: Url,
 
-    // The happy flag. This is used to determine if the happy path
-    // should be used for the runners.
-    happy: bool,
+    // The maximum number of operations per mutation.
+    max_operations_per_mutation: u64,
 
     // The output buffer. This is used to store the output of the
     // command that is being executed.
@@ -126,9 +125,6 @@ pub struct App {
 
     // The RPC URLs for each runner. The same as with `runner_seeds`.
     runner_rpcs: HashMap<Runner, Url>,
-
-    // The happy flag for each runner. The same as with `runner_seeds`.
-    runner_happy: HashMap<Runner, bool>,
 }
 
 impl App {
@@ -139,7 +135,7 @@ impl App {
     /// * `rpc_url` - The URL of the RPC endpoint.
     /// * `sk` - The private key of the account that will be sending the transactions.
     /// * `seed` - The seed to use for the runners.
-    pub fn new(rpc_url: Url, sk: SigningKey, seed: u64) -> Self {
+    pub fn new(rpc_url: Url, sk: SigningKey, seed: u64, max_operations_per_mutation: u64) -> Self {
         let mut list_state = ListState::default();
         list_state.select(Some(0));
 
@@ -148,7 +144,7 @@ impl App {
             seed,
             sk: sk.clone(),
             rpc_url: rpc_url.clone(),
-            happy: false,
+            max_operations_per_mutation,
             output: String::new(),
             command_history: Vec::new(),
             output_history: Vec::new(),
@@ -159,17 +155,16 @@ impl App {
             left_panel_width: 70,
             input_height: 3,
             handler: HashMap::new(),
-            random_runner: RandomTransactionRunner::new(rpc_url.clone(), sk.clone(), seed),
-            legacy_runner: LegacyTransactionRunner::new(rpc_url.clone(), sk.clone(), seed),
-            al_runner: ALTransactionRunner::new(rpc_url.clone(), sk.clone(), seed),
-            blob_runner: BlobTransactionRunner::new(rpc_url.clone(), sk.clone(), seed),
-            eip1559_runner: EIP1559TransactionRunner::new(rpc_url.clone(), sk.clone(), seed),
-            eip7702_runner: EIP7702TransactionRunner::new(rpc_url.clone(), sk.clone(), seed),
+            random_runner: RandomTransactionRunner::new(rpc_url.clone(), sk.clone(), seed, max_operations_per_mutation),
+            legacy_runner: LegacyTransactionRunner::new(rpc_url.clone(), sk.clone(), seed, max_operations_per_mutation),
+            al_runner: ALTransactionRunner::new(rpc_url.clone(), sk.clone(), seed, max_operations_per_mutation),
+            blob_runner: BlobTransactionRunner::new(rpc_url.clone(), sk.clone(), seed, max_operations_per_mutation),
+            eip1559_runner: EIP1559TransactionRunner::new(rpc_url.clone(), sk.clone(), seed, max_operations_per_mutation),
+            eip7702_runner: EIP7702TransactionRunner::new(rpc_url.clone(), sk.clone(), seed, max_operations_per_mutation),
             active_runners: HashMap::new(),
             runner_seeds: HashMap::new(),
             runner_sks: HashMap::new(),
             runner_rpcs: HashMap::new(),
-            runner_happy: HashMap::new(),
         }
     }
 
@@ -365,7 +360,7 @@ impl App {
 
         // Set status color based on status value
         let status_color = if self.running { Color::Green } else { Color::Red };
-        
+
         // Pretty print status
         let status = if self.running { "Running" } else { "Stopped" };
 
@@ -392,7 +387,9 @@ impl App {
             ]),
         ];
 
-        let mut runners = vec![AL, Blob, EIP1559, EIP7702, Legacy, Random];
+        let mut runners = vec![
+            AL, Blob, EIP1559, EIP7702, Legacy, Random,
+        ];
 
         // Add active runners information
         let mut active_runners = Vec::new();
@@ -404,12 +401,11 @@ impl App {
                 let address =
                     Address::from_private_key(self.runner_sks.get(runner).unwrap_or(&self.sk));
                 let rpc = self.runner_rpcs.get(runner).unwrap_or(&self.rpc_url);
-                let happy = self.runner_happy.get(runner).unwrap_or(&self.happy);
 
                 active_runners.push(Line::from(vec![
                     Span::styled(format!("{}: ", runner), Style::default().fg(Color::Yellow)),
                     Span::styled(
-                        format!("seed={}, signer={}, rpc={}, happy={}", seed, address, rpc, happy),
+                        format!("seed={}, signer={}, rpc={}, ops={}", seed, address, rpc, self.max_operations_per_mutation),
                         Style::default().fg(Color::Green),
                     ),
                 ]));

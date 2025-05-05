@@ -16,6 +16,8 @@ struct Cli {
     sk: String,
     #[arg(long, help = "Seed for the random number generator", default_value = "0")]
     seed: u64,
+    #[arg(long, help = "Max operations per mutation", default_value = "1000")]
+    max_operations_per_mutation: u64,
 }
 
 #[tokio::main]
@@ -25,7 +27,8 @@ async fn main() {
     let rpc_url = cli.rpc.parse::<Url>().unwrap();
     let sk = SigningKey::from_slice(hex::decode(cli.sk).unwrap().as_slice()).unwrap();
     let seed = cli.seed;
+    let max_operations_per_mutation = cli.max_operations_per_mutation;
 
-    let mut app = App::new(rpc_url, sk, seed);
+    let mut app = App::new(rpc_url, sk, seed, max_operations_per_mutation);
     let _ = app.run().await.unwrap();
 }

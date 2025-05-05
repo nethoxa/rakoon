@@ -1,18 +1,23 @@
 use crate::builder::Builder;
 use alloy::{
-    primitives::Address,
+    consensus::TxEip7702,
+    primitives::{Address, TxHash},
     providers::{Provider, ProviderBuilder},
     rpc::types::TransactionRequest,
     signers::{k256::ecdsa::SigningKey, local::PrivateKeySigner},
     transports::http::reqwest::Url,
 };
+use alloy_rlp::Encodable;
 use common::types::Backend;
-use rand::{SeedableRng, rngs::StdRng};
+use mutator::Mutator;
+use rand::{SeedableRng, random_bool, rngs::StdRng};
+
 pub struct EIP7702TransactionRunner {
     pub sk: SigningKey,
     pub seed: u64,
-    pub tx_sent: u64,
     pub provider: Backend,
+    pub current_tx: Vec<u8>,
+    pub mutator: Mutator,
 }
 
 impl Builder for EIP7702TransactionRunner {
@@ -22,12 +27,14 @@ impl Builder for EIP7702TransactionRunner {
 }
 
 impl EIP7702TransactionRunner {
-    pub fn new(rpc_url: Url, sk: SigningKey, seed: u64) -> Self {
+    pub fn new(rpc_url: Url, sk: SigningKey, seed: u64, max_operations_per_mutation: u64) -> Self {
         let provider = ProviderBuilder::new()
             .wallet::<PrivateKeySigner>(sk.clone().into())
             .connect_http(rpc_url);
 
-        Self { sk, seed, tx_sent: 0, provider }
+        let mutator = Mutator::new(max_operations_per_mutation, seed);
+
+        Self { sk, seed, current_tx: vec![], provider, mutator }
     }
 
     pub async fn run(&mut self) {
@@ -35,9 +42,20 @@ impl EIP7702TransactionRunner {
         let sender = Address::from_private_key(&self.sk);
 
         loop {
-            let tx = self.create_eip7702_transaction(&mut random, sender).await;
-            let _ = self.provider.send_transaction_unsafe(tx).await;
-            self.tx_sent += 1;
+            // 10% chance to re-generate the transaction
+            if random_bool(0.1) || self.current_tx.is_empty() {
+                let (request, tx) = self.create_eip7702_transaction(&mut random, sender).await;
+                tx.encode(&mut self.current_tx);
+
+                let _ = self.provider.send_transaction_unsafe(request).await;
+            } else {
+                self.mutator.mutate(&mut self.current_tx);
+                let _: Result<TxHash, _> = self
+                    .provider
+                    .client()
+                    .request("eth_sendRawTransaction", &self.current_tx)
+                    .await;
+            }
         }
     }
 
@@ -45,31 +63,22 @@ impl EIP7702TransactionRunner {
         &self,
         random: &mut StdRng,
         sender: Address,
-    ) -> TransactionRequest {
+    ) -> (TransactionRequest, TxEip7702) {
+        // EIP-7702 transaction type
+        let transaction_type = 4;
+
         let to = self.to(random);
-
         let max_fee_per_gas = self.max_fee_per_gas(random);
-
         let max_priority_fee_per_gas = self.max_priority_fee_per_gas(random).await;
-
         let gas_limit = self.gas(random);
-
         let value = self.value(random, sender).await;
-
         let input = self.input(random);
-
         let nonce = self.nonce(random, sender).await;
-
         let chain_id = self.chain_id(random).await;
-
         let access_list = self.access_list(random);
-
         let authorization_list = self.authorization_list(random);
 
-        // EIP-7702 transaction type
-        let transaction_type = 5;
-
-        TransactionRequest {
+        let request = TransactionRequest {
             from: Some(sender),
             to: Some(to),
             gas_price: None,
@@ -78,15 +87,30 @@ impl EIP7702TransactionRunner {
             max_fee_per_blob_gas: None,
             gas: Some(gas_limit),
             value: Some(value),
-            input,
+            input: input.clone(),
             nonce: Some(nonce),
             chain_id: Some(chain_id),
-            access_list: Some(access_list),
+            access_list: Some(access_list.clone()),
             transaction_type: Some(transaction_type),
             blob_versioned_hashes: None,
             sidecar: None,
-            authorization_list: Some(authorization_list),
-        }
+            authorization_list: Some(authorization_list.clone()),
+        };
+
+        let tx = TxEip7702 {
+            to: to.into_to().unwrap_or_else(|| Address::ZERO),
+            gas_limit,
+            value,
+            chain_id,
+            nonce,
+            max_fee_per_gas,
+            max_priority_fee_per_gas,
+            access_list,
+            authorization_list,
+            input: input.into_input().unwrap(),
+        };
+
+        (request, tx)
     }
 }
 
@@ -103,6 +127,7 @@ async fn test_eip7702_transaction_runner() {
         )
         .unwrap(),
         1,
+        1000,
     );
     let tx = runner.create_eip7702_transaction(&mut rng, Address::ZERO).await;
     println!("tx: {:#?}", &tx);

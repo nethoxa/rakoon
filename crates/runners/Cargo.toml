@@ -8,4 +8,7 @@ rust-version.workspace = true
 rand = { workspace = true }
 tokio = { workspace = true }
 alloy = { workspace = true }
+alloy-rlp = { workspace = true }
+
 common = { path = "../common" }
+mutator = { path = "../mutator" }

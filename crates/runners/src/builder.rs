@@ -7,9 +7,7 @@ use alloy::{
 };
 use common::{
     constants::{
-        MAX_ACCESS_LIST_LENGTH, MAX_ACCESSED_KEYS_LENGTH, MAX_AUTHORIZATION_LIST_LENGTH,
-        MAX_BLOB_SIDECAR_LENGTH, MAX_BLOB_VERSIONED_HASHES_LENGTH, MAX_INPUT_LENGTH,
-        MAX_TRANSACTION_TYPE,
+        MAX_ACCESSED_KEYS_LENGTH, MAX_ACCESS_LIST_LENGTH, MAX_AUTHORIZATION_LIST_LENGTH, MAX_BLOB_SIDECAR_LENGTH, MAX_BLOB_VERSIONED_HASHES_LENGTH, MAX_GAS_LIMIT, MAX_INPUT_LENGTH, MAX_TRANSACTION_TYPE
     },
     types::Backend,
 };
@@ -36,7 +34,7 @@ pub trait Builder {
 
     #[allow(async_fn_in_trait)]
     async fn gas_price(&self, random: &mut StdRng) -> u128 {
-        if random_bool(0.5) {
+        if random_bool(0.85) {
             if let Ok(price) = self.provider().get_gas_price().await {
                 price
             } else {
@@ -58,7 +56,7 @@ pub trait Builder {
 
     #[allow(async_fn_in_trait)]
     async fn max_priority_fee_per_gas(&self, random: &mut StdRng) -> u128 {
-        if random_bool(0.5) {
+        if random_bool(0.85) {
             if let Ok(fee) = self.provider().get_max_priority_fee_per_gas().await {
                 fee
             } else {
@@ -73,7 +71,7 @@ pub trait Builder {
 
     #[allow(async_fn_in_trait)]
     async fn max_fee_per_blob_gas(&self, random: &mut StdRng) -> u128 {
-        if random_bool(0.5) {
+        if random_bool(0.85) {
             if let Ok(fee) = self.provider().get_blob_base_fee().await {
                 fee
             } else {
@@ -88,14 +86,14 @@ pub trait Builder {
 
     // [nethoxa] should implement a call to gas estimation
     fn gas(&self, random: &mut StdRng) -> u64 {
-        random.next_u64()
+        random.random_range(0..=MAX_GAS_LIMIT * 2)
     }
 
     // ------------------------------------------------------------
 
     #[allow(async_fn_in_trait)]
     async fn value(&self, random: &mut StdRng, sender: Address) -> U256 {
-        if random_bool(0.5) {
+        if random_bool(0.85) {
             if let Ok(balance) = self.provider().get_account(sender).await {
                 balance.balance / U256::from(100_000_000)
             } else {
@@ -115,7 +113,7 @@ pub trait Builder {
     // ------------------------------------------------------------
 
     fn input(&self, random: &mut StdRng) -> TransactionInput {
-        if random_bool(0.5) {
+        if random_bool(0.2) {
             let length = random.random_range(0..=MAX_INPUT_LENGTH);
             TransactionInput::new(self.random_bytes(length, random))
         } else {
@@ -127,7 +125,7 @@ pub trait Builder {
 
     #[allow(async_fn_in_trait)]
     async fn nonce(&self, random: &mut StdRng, sender: Address) -> u64 {
-        if random_bool(0.5) {
+        if random_bool(0.85) {
             if let Ok(nonce) = self.provider().get_account(sender).await {
                 nonce.nonce
             } else {
@@ -142,7 +140,7 @@ pub trait Builder {
 
     #[allow(async_fn_in_trait)]
     async fn chain_id(&self, random: &mut StdRng) -> u64 {
-        if random_bool(0.5) {
+        if random_bool(0.85) {
             if let Ok(chain_id) = self.provider().get_chain_id().await {
                 chain_id
             } else {
@@ -156,7 +154,7 @@ pub trait Builder {
     // ------------------------------------------------------------
 
     fn access_list(&self, random: &mut StdRng) -> AccessList {
-        if random_bool(0.5) { self.random_access_list(random) } else { AccessList::from(vec![]) }
+        if random_bool(0.2) { self.random_access_list(random) } else { AccessList::from(vec![]) }
     }
 
     fn random_access_list(&self, random: &mut StdRng) -> AccessList {
@@ -198,7 +196,7 @@ pub trait Builder {
     // ------------------------------------------------------------
 
     fn blob_versioned_hashes(&self, random: &mut StdRng) -> Vec<FixedBytes<32>> {
-        if random_bool(0.5) { self.random_blob_versioned_hashes(random) } else { vec![] }
+        if random_bool(0.2) { self.random_blob_versioned_hashes(random) } else { vec![] }
     }
 
     fn random_blob_versioned_hashes(&self, random: &mut StdRng) -> Vec<FixedBytes<32>> {
@@ -223,7 +221,7 @@ pub trait Builder {
     // ------------------------------------------------------------
 
     fn sidecar(&self, random: &mut StdRng) -> BlobTransactionSidecar {
-        if random_bool(0.5) {
+        if random_bool(0.2) {
             self.random_sidecar(random)
         } else {
             BlobTransactionSidecar::new(vec![], vec![], vec![])
@@ -322,7 +320,7 @@ pub trait Builder {
     // ------------------------------------------------------------
 
     fn authorization_list(&self, random: &mut StdRng) -> Vec<SignedAuthorization> {
-        if random_bool(0.5) { self.random_authorization_list(random) } else { vec![] }
+        if random_bool(0.2) { self.random_authorization_list(random) } else { vec![] }
     }
 
     fn random_authorization_list(&self, random: &mut StdRng) -> Vec<SignedAuthorization> {

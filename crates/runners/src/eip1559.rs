@@ -1,18 +1,23 @@
 use crate::builder::Builder;
 use alloy::{
-    primitives::Address,
+    consensus::TxEip1559,
+    primitives::{Address, TxHash},
     providers::{Provider, ProviderBuilder},
     rpc::types::TransactionRequest,
     signers::{k256::ecdsa::SigningKey, local::PrivateKeySigner},
     transports::http::reqwest::Url,
 };
+use alloy_rlp::Encodable;
 use common::types::Backend;
-use rand::{SeedableRng, rngs::StdRng};
+use mutator::Mutator;
+use rand::{SeedableRng, random_bool, rngs::StdRng};
+
 pub struct EIP1559TransactionRunner {
     pub sk: SigningKey,
     pub seed: u64,
-    pub tx_sent: u64,
     pub provider: Backend,
+    pub current_tx: Vec<u8>,
+    pub mutator: Mutator,
 }
 
 impl Builder for EIP1559TransactionRunner {
@@ -22,12 +27,14 @@ impl Builder for EIP1559TransactionRunner {
 }
 
 impl EIP1559TransactionRunner {
-    pub fn new(rpc_url: Url, sk: SigningKey, seed: u64) -> Self {
+    pub fn new(rpc_url: Url, sk: SigningKey, seed: u64, max_operations_per_mutation: u64) -> Self {
         let provider = ProviderBuilder::new()
             .wallet::<PrivateKeySigner>(sk.clone().into())
             .connect_http(rpc_url);
 
-        Self { sk, seed, tx_sent: 0, provider }
+        let mutator = Mutator::new(max_operations_per_mutation, seed);
+
+        Self { sk, seed, current_tx: vec![], provider, mutator }
     }
 
     pub async fn run(&mut self) {
@@ -35,9 +42,20 @@ impl EIP1559TransactionRunner {
         let sender = Address::from_private_key(&self.sk);
 
         loop {
-            let tx = self.create_eip1559_transaction(&mut random, sender).await;
-            let _ = self.provider.send_transaction_unsafe(tx).await;
-            self.tx_sent += 1;
+            // 15% chance to re-generate the transaction
+            if random_bool(0.1) || self.current_tx.is_empty() {
+                let (request, tx) = self.create_eip1559_transaction(&mut random, sender).await;
+                tx.encode(&mut self.current_tx);
+
+                let _ = self.provider.send_transaction_unsafe(request).await;
+            } else {
+                self.mutator.mutate(&mut self.current_tx);
+                let _: Result<TxHash, _> = self
+                    .provider
+                    .client()
+                    .request("eth_sendRawTransaction", &self.current_tx)
+                    .await;
+            }
         }
     }
 
@@ -45,29 +63,21 @@ impl EIP1559TransactionRunner {
         &self,
         random: &mut StdRng,
         sender: Address,
-    ) -> TransactionRequest {
-        let to = self.to(random);
-
-        let max_fee_per_gas = self.max_fee_per_gas(random);
-
-        let max_priority_fee_per_gas = self.max_priority_fee_per_gas(random).await;
-
-        let gas_limit = self.gas(random);
-
-        let value = self.value(random, sender).await;
-
-        let input = self.input(random);
-
-        let nonce = self.nonce(random, sender).await;
-
-        let chain_id = self.chain_id(random).await;
-
-        let access_list = self.access_list(random);
-
+    ) -> (TransactionRequest, TxEip1559) {
         // EIP-1559 transaction type
         let transaction_type = 2;
 
-        TransactionRequest {
+        let to = self.to(random);
+        let max_fee_per_gas = self.max_fee_per_gas(random);
+        let max_priority_fee_per_gas = self.max_priority_fee_per_gas(random).await;
+        let gas_limit = self.gas(random);
+        let value = self.value(random, sender).await;
+        let input = self.input(random);
+        let nonce = self.nonce(random, sender).await;
+        let chain_id = self.chain_id(random).await;
+        let access_list = self.access_list(random);
+
+        let request = TransactionRequest {
             from: Some(sender),
             to: Some(to),
             gas_price: None,
@@ -76,15 +86,29 @@ impl EIP1559TransactionRunner {
             max_fee_per_blob_gas: None,
             gas: Some(gas_limit),
             value: Some(value),
-            input,
+            input: input.clone(),
             nonce: Some(nonce),
             chain_id: Some(chain_id),
-            access_list: Some(access_list),
+            access_list: Some(access_list.clone()),
             transaction_type: Some(transaction_type),
             blob_versioned_hashes: None,
             sidecar: None,
             authorization_list: None,
-        }
+        };
+
+        let tx = TxEip1559 {
+            to,
+            gas_limit,
+            value,
+            chain_id,
+            nonce,
+            access_list,
+            input: input.into_input().unwrap(),
+            max_fee_per_gas,
+            max_priority_fee_per_gas,
+        };
+
+        (request, tx)
     }
 }
 
@@ -101,6 +125,7 @@ async fn test_eip1559_transaction_runner() {
         )
         .unwrap(),
         1,
+        1000,
     );
     let tx = runner.create_eip1559_transaction(&mut rng, Address::ZERO).await;
     println!("tx: {:#?}", &tx);

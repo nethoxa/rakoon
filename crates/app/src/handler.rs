@@ -25,7 +25,7 @@ impl App {
     // Helper function to check if a parameter is valid
     fn is_valid_param(&self, param: &str) -> bool {
         [
-            "rpc", "sk", "seed", "happy",
+            "rpc", "sk", "seed",
         ]
         .contains(&param)
     }
@@ -78,19 +78,6 @@ impl App {
                     self.print(&format!("global seed set to {}", value));
                 } else {
                     self.print(&format!("invalid seed: {}", value));
-                    return Err(AppStatus::RuntimeError);
-                }
-            }
-            "happy" => {
-                if let Ok(happy) = self.parse_bool(value) {
-                    if self.happy == happy {
-                        self.print(&format!("global happy already set to that value"));
-                        return Err(AppStatus::RuntimeError);
-                    }
-                    self.happy = happy;
-                    self.print(&format!("global happy set to {}", value));
-                } else {
-                    self.print(&format!("invalid happy: {}", value));
                     return Err(AppStatus::RuntimeError);
                 }
             }
@@ -148,19 +135,6 @@ impl App {
                         return Err(AppStatus::RuntimeError);
                     }
                 }
-                "happy" => {
-                    if let Ok(happy) = self.parse_bool(value) {
-                        if self.runner_happy.get(&AL) == Some(&happy) {
-                            self.print(&format!("{} happy already set to that value", runner));
-                            return Err(AppStatus::RuntimeError);
-                        }
-                        self.runner_happy.insert(AL, happy);
-                        self.print(&format!("{} happy set to {}", runner, value));
-                    } else {
-                        self.print(&format!("invalid happy: {}", value));
-                        return Err(AppStatus::RuntimeError);
-                    }
-                }
                 _ => unreachable!(),
             },
             "blob" => match param {
@@ -200,19 +174,6 @@ impl App {
                         self.print(&format!("{} seed set to {}", runner, value));
                     } else {
                         self.print(&format!("invalid seed: {}", value));
-                        return Err(AppStatus::RuntimeError);
-                    }
-                }
-                "happy" => {
-                    if let Ok(happy) = self.parse_bool(value) {
-                        if self.runner_happy.get(&Blob) == Some(&happy) {
-                            self.print(&format!("{} happy already set to that value", runner));
-                            return Err(AppStatus::RuntimeError);
-                        }
-                        self.runner_happy.insert(Blob, happy);
-                        self.print(&format!("{} happy set to {}", runner, value));
-                    } else {
-                        self.print(&format!("invalid happy: {}", value));
                         return Err(AppStatus::RuntimeError);
                     }
                 }
@@ -258,19 +219,6 @@ impl App {
                         return Err(AppStatus::RuntimeError);
                     }
                 }
-                "happy" => {
-                    if let Ok(happy) = self.parse_bool(value) {
-                        if self.runner_happy.get(&EIP1559) == Some(&happy) {
-                            self.print(&format!("{} happy already set to that value", runner));
-                            return Err(AppStatus::RuntimeError);
-                        }
-                        self.runner_happy.insert(EIP1559, happy);
-                        self.print(&format!("{} happy set to {}", runner, value));
-                    } else {
-                        self.print(&format!("invalid happy: {}", value));
-                        return Err(AppStatus::RuntimeError);
-                    }
-                }
                 _ => unreachable!(),
             },
             "eip7702" => match param {
@@ -310,19 +258,6 @@ impl App {
                         self.print(&format!("{} seed set to {}", runner, value));
                     } else {
                         self.print(&format!("invalid seed: {}", value));
-                        return Err(AppStatus::RuntimeError);
-                    }
-                }
-                "happy" => {
-                    if let Ok(happy) = self.parse_bool(value) {
-                        if self.runner_happy.get(&EIP7702) == Some(&happy) {
-                            self.print(&format!("{} happy already set to that value", runner));
-                            return Err(AppStatus::RuntimeError);
-                        }
-                        self.runner_happy.insert(EIP7702, happy);
-                        self.print(&format!("{} happy set to {}", runner, value));
-                    } else {
-                        self.print(&format!("invalid happy: {}", value));
                         return Err(AppStatus::RuntimeError);
                     }
                 }
@@ -368,19 +303,6 @@ impl App {
                         return Err(AppStatus::RuntimeError);
                     }
                 }
-                "happy" => {
-                    if let Ok(happy) = self.parse_bool(value) {
-                        if self.runner_happy.get(&Legacy) == Some(&happy) {
-                            self.print(&format!("{} happy already set to that value", runner));
-                            return Err(AppStatus::RuntimeError);
-                        }
-                        self.runner_happy.insert(Legacy, happy);
-                        self.print(&format!("{} happy set to {}", runner, value));
-                    } else {
-                        self.print(&format!("invalid happy: {}", value));
-                        return Err(AppStatus::RuntimeError);
-                    }
-                }
                 _ => unreachable!(),
             },
             "random" => match param {
@@ -423,19 +345,6 @@ impl App {
                         return Err(AppStatus::RuntimeError);
                     }
                 }
-                "happy" => {
-                    if let Ok(happy) = self.parse_bool(value) {
-                        if self.runner_happy.get(&Random) == Some(&happy) {
-                            self.print(&format!("{} happy already set to that value", runner));
-                            return Err(AppStatus::RuntimeError);
-                        }
-                        self.runner_happy.insert(Random, happy);
-                        self.print(&format!("{} happy set to {}", runner, value));
-                    } else {
-                        self.print(&format!("invalid happy: {}", value));
-                        return Err(AppStatus::RuntimeError);
-                    }
-                }
                 _ => unreachable!(),
             },
             _ => unreachable!(),
@@ -450,14 +359,13 @@ impl App {
             "all" => {
                 let sk = SigningKey::from_slice(hex::decode(SK).unwrap().as_slice()).unwrap();
                 let url = Url::parse("http://localhost:8545").unwrap();
-                if self.rpc_url == url && self.seed == 0 && self.sk == sk && self.happy == false {
+                if self.rpc_url == url && self.seed == 0 && self.sk == sk {
                     self.print("global config is already reset");
                     return Err(AppStatus::RuntimeError);
                 }
                 self.rpc_url = url;
                 self.seed = 0;
                 self.sk = sk;
-                self.happy = false;
             }
             "rpc" => {
                 let url = Url::parse("http://localhost:8545").unwrap();
@@ -482,13 +390,6 @@ impl App {
                 }
                 self.seed = 0;
             }
-            "happy" => {
-                if self.happy == false {
-                    self.print("global happy is already reset");
-                    return Err(AppStatus::RuntimeError);
-                }
-                self.happy = false;
-            }
             _ => unreachable!(),
         }
 
@@ -502,7 +403,6 @@ impl App {
                     if self.runner_rpcs.get(&AL) == None
                         && self.runner_sks.get(&AL) == None
                         && self.runner_seeds.get(&AL) == None
-                        && self.runner_happy.get(&AL) == None
                     {
                         self.print(&format!("{} runner is already reset", runner));
                         return Err(AppStatus::RuntimeError);
@@ -510,7 +410,6 @@ impl App {
                     self.runner_rpcs.remove(&AL);
                     self.runner_sks.remove(&AL);
                     self.runner_seeds.remove(&AL);
-                    self.runner_happy.remove(&AL);
                 }
                 "rpc" => {
                     if self.runner_rpcs.get(&AL) == None {
@@ -533,13 +432,6 @@ impl App {
                     }
                     self.runner_seeds.remove(&AL);
                 }
-                "happy" => {
-                    if self.runner_happy.get(&AL) == None {
-                        self.print(&format!("{} runner happy is already reset", runner));
-                        return Err(AppStatus::RuntimeError);
-                    }
-                    self.runner_happy.remove(&AL);
-                }
                 _ => unreachable!(),
             },
             "blob" => match param {
@@ -547,7 +439,6 @@ impl App {
                     if self.runner_rpcs.get(&Blob) == None
                         && self.runner_sks.get(&Blob) == None
                         && self.runner_seeds.get(&Blob) == None
-                        && self.runner_happy.get(&Blob) == None
                     {
                         self.print(&format!("{} runner is already reset", runner));
                         return Err(AppStatus::RuntimeError);
@@ -555,7 +446,6 @@ impl App {
                     self.runner_rpcs.remove(&Blob);
                     self.runner_sks.remove(&Blob);
                     self.runner_seeds.remove(&Blob);
-                    self.runner_happy.remove(&Blob);
                 }
                 "rpc" => {
                     if self.runner_rpcs.get(&Blob) == None {
@@ -578,13 +468,6 @@ impl App {
                     }
                     self.runner_seeds.remove(&Blob);
                 }
-                "happy" => {
-                    if self.runner_happy.get(&Blob) == None {
-                        self.print(&format!("{} runner happy is already reset", runner));
-                        return Err(AppStatus::RuntimeError);
-                    }
-                    self.runner_happy.remove(&Blob);
-                }
                 _ => unreachable!(),
             },
             "eip1559" => match param {
@@ -592,7 +475,6 @@ impl App {
                     if self.runner_rpcs.get(&EIP1559) == None
                         && self.runner_sks.get(&EIP1559) == None
                         && self.runner_seeds.get(&EIP1559) == None
-                        && self.runner_happy.get(&EIP1559) == None
                     {
                         self.print(&format!("{} runner is already reset", runner));
                         return Err(AppStatus::RuntimeError);
@@ -600,7 +482,6 @@ impl App {
                     self.runner_rpcs.remove(&EIP1559);
                     self.runner_sks.remove(&EIP1559);
                     self.runner_seeds.remove(&EIP1559);
-                    self.runner_happy.remove(&EIP1559);
                 }
                 "rpc" => {
                     if self.runner_rpcs.get(&EIP1559) == None {
@@ -623,13 +504,6 @@ impl App {
                     }
                     self.runner_seeds.remove(&EIP1559);
                 }
-                "happy" => {
-                    if self.runner_happy.get(&EIP1559) == None {
-                        self.print(&format!("{} runner happy is already reset", runner));
-                        return Err(AppStatus::RuntimeError);
-                    }
-                    self.runner_happy.remove(&EIP1559);
-                }
                 _ => unreachable!(),
             },
             "eip7702" => match param {
@@ -637,7 +511,6 @@ impl App {
                     if self.runner_rpcs.get(&EIP7702) == None
                         && self.runner_sks.get(&EIP7702) == None
                         && self.runner_seeds.get(&EIP7702) == None
-                        && self.runner_happy.get(&EIP7702) == None
                     {
                         self.print(&format!("{} runner is already reset", runner));
                         return Err(AppStatus::RuntimeError);
@@ -645,7 +518,6 @@ impl App {
                     self.runner_rpcs.remove(&EIP7702);
                     self.runner_sks.remove(&EIP7702);
                     self.runner_seeds.remove(&EIP7702);
-                    self.runner_happy.remove(&EIP7702);
                 }
                 "rpc" => {
                     if self.runner_rpcs.get(&EIP7702) == None {
@@ -668,13 +540,6 @@ impl App {
                     }
                     self.runner_seeds.remove(&EIP7702);
                 }
-                "happy" => {
-                    if self.runner_happy.get(&EIP7702) == None {
-                        self.print(&format!("{} runner happy is already reset", runner));
-                        return Err(AppStatus::RuntimeError);
-                    }
-                    self.runner_happy.remove(&EIP7702);
-                }
                 _ => unreachable!(),
             },
             "legacy" => match param {
@@ -682,7 +547,6 @@ impl App {
                     if self.runner_rpcs.get(&Legacy) == None
                         && self.runner_sks.get(&Legacy) == None
                         && self.runner_seeds.get(&Legacy) == None
-                        && self.runner_happy.get(&Legacy) == None
                     {
                         self.print(&format!("{} runner is already reset", runner));
                         return Err(AppStatus::RuntimeError);
@@ -690,7 +554,6 @@ impl App {
                     self.runner_rpcs.remove(&Legacy);
                     self.runner_sks.remove(&Legacy);
                     self.runner_seeds.remove(&Legacy);
-                    self.runner_happy.remove(&Legacy);
                 }
                 "rpc" => {
                     if self.runner_rpcs.get(&Legacy) == None {
@@ -713,13 +576,6 @@ impl App {
                     }
                     self.runner_seeds.remove(&Legacy);
                 }
-                "happy" => {
-                    if self.runner_happy.get(&Legacy) == None {
-                        self.print(&format!("{} runner happy is already reset", runner));
-                        return Err(AppStatus::RuntimeError);
-                    }
-                    self.runner_happy.remove(&Legacy);
-                }
                 _ => unreachable!(),
             },
             "random" => match param {
@@ -727,7 +583,6 @@ impl App {
                     if self.runner_rpcs.get(&Random) == None
                         && self.runner_sks.get(&Random) == None
                         && self.runner_seeds.get(&Random) == None
-                        && self.runner_happy.get(&Random) == None
                     {
                         self.print(&format!("{} runner is already reset", runner));
                         return Err(AppStatus::RuntimeError);
@@ -735,7 +590,6 @@ impl App {
                     self.runner_rpcs.remove(&Random);
                     self.runner_sks.remove(&Random);
                     self.runner_seeds.remove(&Random);
-                    self.runner_happy.remove(&Random);
                 }
                 "rpc" => {
                     if self.runner_rpcs.get(&Random) == None {
@@ -757,13 +611,6 @@ impl App {
                         return Err(AppStatus::RuntimeError);
                     }
                     self.runner_seeds.remove(&Random);
-                }
-                "happy" => {
-                    if self.runner_happy.get(&Random) == None {
-                        self.print(&format!("{} runner happy is already reset", runner));
-                        return Err(AppStatus::RuntimeError);
-                    }
-                    self.runner_happy.remove(&Random);
                 }
                 _ => unreachable!(),
             },
@@ -832,7 +679,7 @@ impl App {
                     return Err(AppStatus::RuntimeError);
                 }
             } else {
-                self.print("invalid reset command format. Use: reset <global/RUNNER> <RPC/sk/seed/happy/all>");
+                self.print("invalid reset command format. Use: reset <global/RUNNER> <RPC/sk/seed/all>");
                 return Err(AppStatus::RuntimeError);
             }
         }

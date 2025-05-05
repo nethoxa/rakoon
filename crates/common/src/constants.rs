@@ -115,10 +115,12 @@ pub const MAX_ACCESS_LIST_LENGTH: usize = 1024;
 
 pub const MAX_ACCESSED_KEYS_LENGTH: usize = 1024;
 
-pub const MAX_TRANSACTION_TYPE: u8 = 5;
+pub const MAX_TRANSACTION_TYPE: u8 = 5; // one more for invalid testing
 
 pub const MAX_BLOB_VERSIONED_HASHES_LENGTH: usize = 1024;
 
 pub const MAX_BLOB_SIDECAR_LENGTH: usize = 1024;
 
 pub const MAX_AUTHORIZATION_LIST_LENGTH: usize = 1024;
+
+pub const MAX_TRANSACTION_LENGTH: usize = 1024 * 100; // revisit
