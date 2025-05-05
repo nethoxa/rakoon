@@ -4,7 +4,7 @@
 
 - - - 
 
-This is a transaction fuzzer for the Ethereum Protocol, with per-transaction custom mutators, an user interface for seeing live data from the fuzzer and a terminal to ineract with it in real time. Huge thanks to [Marius van der Wijden](https://github.com/MariusVanDerWijden) for building [tx-fuzz](https://github.com/MariusVanDerWijden/tx-fuzz), which I used as reference in many parts of this project.
+This is a transaction fuzzer for the Ethereum Protocol, with per-transaction custom mutators, an user interface for seeing live data from the fuzzer and a terminal to ineract with it in real time. Huge thanks to [Marius van der Wijden](https://github.com/MariusVanDerWijden) for building [tx-fuzz](https://github.com/MariusVanDerWijden/tx-fuzz), which I used as reference in many parts of this project, as well as to the [alloy team](https://github.com/alloy-rs), as I leveraged heavily on them to build this.
 
 ## Usage
 
@@ -61,13 +61,10 @@ Where `<runner>` can be one of `al`, `blob`, `eip1559`, `eip7702`, `legacy`, `ra
 #### Other Commands
 - `exit` - Exit the application
 
-
 # TODO
 
-Tienes que añadir más mutatos, como por ejemplo auths duplicadas, auths duplicadas de diferentes usuarios, signatures off the curve, access lists con duplicados...
-
-Tambien solo fuzzea valid tx types, deberias poder mandar types random
-
-El counter de txs sent no funciona/no implementado
-
-Tienes que implementar happy path para todos
+- [ ] More mutators
+- [ ] Implement the calls to the mutator to mutate tx specific stuff
+- [ ] Implement happy paths to send valid txs
+- [ ] Be able to send wrong type txs like sidecars in legacy txs and so on
+- [ ] tx counter not implemented yet
