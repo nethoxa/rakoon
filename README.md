@@ -63,8 +63,5 @@ Where `<runner>` can be one of `al`, `blob`, `eip1559`, `eip7702`, `legacy`, `ra
 
 # TODO
 
-- [ ] More mutators
-- [ ] Implement the calls to the mutator to mutate tx specific stuff
-- [ ] Implement happy paths to send valid txs
-- [ ] Be able to send wrong type txs like sidecars in legacy txs and so on
-- [ ] tx counter not implemented yet
+- Happy path
+- Apply mutators on those happy paths

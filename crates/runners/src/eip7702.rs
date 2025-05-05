@@ -36,7 +36,7 @@ impl EIP7702TransactionRunner {
 
         loop {
             let tx = self.create_eip7702_transaction(&mut random, sender).await;
-            let _ = self.provider.send_transaction(tx).await;
+            let _ = self.provider.send_transaction_unsafe(tx).await;
             self.tx_sent += 1;
         }
     }

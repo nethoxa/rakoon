@@ -35,7 +35,7 @@ impl LegacyTransactionRunner {
 
         loop {
             let tx = self.create_legacy_transaction(&mut random, sender).await;
-            let _ = self.provider.send_transaction(tx).await;
+            let _ = self.provider.send_transaction_unsafe(tx).await;
             self.tx_sent += 1;
         }
     }
