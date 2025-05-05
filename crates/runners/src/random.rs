@@ -1,11 +1,19 @@
 use crate::builder::Builder;
 use alloy::{
-    consensus::{transaction::RlpEcdsaEncodableTx, TxEip1559, TxEip2930, TxEip4844, TxEip4844WithSidecar, TxEip7702, TxLegacy}, primitives::{Address, TxHash}, providers::{Provider, ProviderBuilder}, rpc::types::TransactionRequest, signers::{k256::ecdsa::SigningKey, local::PrivateKeySigner}, transports::http::reqwest::Url
+    consensus::{
+        TxEip1559, TxEip2930, TxEip4844, TxEip4844WithSidecar, TxEip7702, TxLegacy,
+        transaction::RlpEcdsaEncodableTx,
+    },
+    primitives::{Address, TxHash},
+    providers::{Provider, ProviderBuilder},
+    rpc::types::TransactionRequest,
+    signers::{k256::ecdsa::SigningKey, local::PrivateKeySigner},
+    transports::http::reqwest::Url,
 };
+use alloy_rlp::Encodable;
 use common::{constants::MAX_TRANSACTION_LENGTH, types::Backend};
 use mutator::Mutator;
-use alloy_rlp::Encodable;
-use rand::{random_bool, rngs::StdRng, Rng, SeedableRng};
+use rand::{Rng, SeedableRng, random_bool, rngs::StdRng};
 pub struct RandomTransactionRunner {
     pub sk: SigningKey,
     pub seed: u64,
@@ -107,7 +115,7 @@ impl RandomTransactionRunner {
                 };
 
                 tx.encode(&mut encoded);
-            },
+            }
             1 => {
                 let tx = TxEip2930 {
                     to,
@@ -121,7 +129,7 @@ impl RandomTransactionRunner {
                 };
 
                 tx.encode(&mut encoded);
-            },
+            }
             2 => {
                 let tx = TxEip1559 {
                     to,
@@ -136,7 +144,7 @@ impl RandomTransactionRunner {
                 };
 
                 tx.encode(&mut encoded);
-            },
+            }
             3 => {
                 let tx = TxEip4844 {
                     to: to.into_to().unwrap_or_else(|| Address::ZERO),
@@ -151,11 +159,11 @@ impl RandomTransactionRunner {
                     input: input.into_input().unwrap(),
                     gas_limit: gas,
                 };
-        
+
                 let tx_with_sidecar = TxEip4844WithSidecar { tx, sidecar };
 
                 tx_with_sidecar.rlp_encode(&mut encoded);
-            },
+            }
             4 => {
                 let tx = TxEip7702 {
                     to: to.into_to().unwrap_or_else(|| Address::ZERO),
@@ -171,14 +179,14 @@ impl RandomTransactionRunner {
                 };
 
                 tx.encode(&mut encoded);
-            },
+            }
             _ => {
                 // Fill with random bytes for any other transaction type
                 let length = random.random_range(0..=MAX_TRANSACTION_LENGTH);
                 let random_bytes = (0..length)
                     .map(|_| random.random_range(0..=u8::MAX) as u8)
                     .collect::<Vec<u8>>();
-                
+
                 encoded.extend_from_slice(&random_bytes);
             }
         };

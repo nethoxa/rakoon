@@ -22,11 +22,7 @@ use runners::{
     eip1559::EIP1559TransactionRunner, eip7702::EIP7702TransactionRunner,
     legacy::LegacyTransactionRunner, random::RandomTransactionRunner,
 };
-use std::{
-    collections::HashMap,
-    io,
-    time::Duration,
-};
+use std::{collections::HashMap, io, time::Duration};
 use tokio::task::JoinHandle;
 pub mod errors;
 pub mod handler;
@@ -155,12 +151,42 @@ impl App {
             left_panel_width: 70,
             input_height: 3,
             handler: HashMap::new(),
-            random_runner: RandomTransactionRunner::new(rpc_url.clone(), sk.clone(), seed, max_operations_per_mutation),
-            legacy_runner: LegacyTransactionRunner::new(rpc_url.clone(), sk.clone(), seed, max_operations_per_mutation),
-            al_runner: ALTransactionRunner::new(rpc_url.clone(), sk.clone(), seed, max_operations_per_mutation),
-            blob_runner: BlobTransactionRunner::new(rpc_url.clone(), sk.clone(), seed, max_operations_per_mutation),
-            eip1559_runner: EIP1559TransactionRunner::new(rpc_url.clone(), sk.clone(), seed, max_operations_per_mutation),
-            eip7702_runner: EIP7702TransactionRunner::new(rpc_url.clone(), sk.clone(), seed, max_operations_per_mutation),
+            random_runner: RandomTransactionRunner::new(
+                rpc_url.clone(),
+                sk.clone(),
+                seed,
+                max_operations_per_mutation,
+            ),
+            legacy_runner: LegacyTransactionRunner::new(
+                rpc_url.clone(),
+                sk.clone(),
+                seed,
+                max_operations_per_mutation,
+            ),
+            al_runner: ALTransactionRunner::new(
+                rpc_url.clone(),
+                sk.clone(),
+                seed,
+                max_operations_per_mutation,
+            ),
+            blob_runner: BlobTransactionRunner::new(
+                rpc_url.clone(),
+                sk.clone(),
+                seed,
+                max_operations_per_mutation,
+            ),
+            eip1559_runner: EIP1559TransactionRunner::new(
+                rpc_url.clone(),
+                sk.clone(),
+                seed,
+                max_operations_per_mutation,
+            ),
+            eip7702_runner: EIP7702TransactionRunner::new(
+                rpc_url.clone(),
+                sk.clone(),
+                seed,
+                max_operations_per_mutation,
+            ),
             active_runners: HashMap::new(),
             runner_seeds: HashMap::new(),
             runner_sks: HashMap::new(),
@@ -405,7 +431,10 @@ impl App {
                 active_runners.push(Line::from(vec![
                     Span::styled(format!("{}: ", runner), Style::default().fg(Color::Yellow)),
                     Span::styled(
-                        format!("seed={}, signer={}, rpc={}, ops={}", seed, address, rpc, self.max_operations_per_mutation),
+                        format!(
+                            "seed={}, signer={}, rpc={}, ops={}",
+                            seed, address, rpc, self.max_operations_per_mutation
+                        ),
                         Style::default().fg(Color::Green),
                     ),
                 ]));

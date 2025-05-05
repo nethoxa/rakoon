@@ -679,7 +679,9 @@ impl App {
                     return Err(AppStatus::RuntimeError);
                 }
             } else {
-                self.print("invalid reset command format. Use: reset <global/RUNNER> <RPC/sk/seed/all>");
+                self.print(
+                    "invalid reset command format. Use: reset <global/RUNNER> <RPC/sk/seed/all>",
+                );
                 return Err(AppStatus::RuntimeError);
             }
         }
