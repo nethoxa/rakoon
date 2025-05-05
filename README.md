@@ -30,12 +30,10 @@ The following commands are available in the terminal interface:
 - `set global rpc <URL>` - Set the global RPC URL
 - `set global sk <private_key>` - Set the global private key
 - `set global seed <number>` - Set the global seed
-- `set global happy <true/false>` - Set the global happy mode
 
 - `set <runner> rpc <URL>` - Set RPC URL for a specific runner
 - `set <runner> sk <private_key>` - Set private key for a specific runner
 - `set <runner> seed <number>` - Set seed for a specific runner
-- `set <runner> happy <true/false>` - Set happy mode for a specific runner
 
 Where `<runner>` can be one of `al`, `blob`, `eip1559`, `eip7702`, `legacy`, `random`
 
@@ -44,13 +42,11 @@ Where `<runner>` can be one of `al`, `blob`, `eip1559`, `eip7702`, `legacy`, `ra
 - `reset global rpc` - Reset global RPC URL
 - `reset global sk` - Reset global private key
 - `reset global seed` - Reset global seed
-- `reset global happy` - Reset global happy mode
 
 - `reset <runner> all` - Reset all configuration for a specific runner
 - `reset <runner> rpc` - Reset RPC URL for a specific runner
 - `reset <runner> sk` - Reset private key for a specific runner
 - `reset <runner> seed` - Reset seed for a specific runner
-- `reset <runner> happy` - Reset happy mode for a specific runner
 
 #### Runner Control
 - `start` - Start all runners
@@ -61,7 +57,6 @@ Where `<runner>` can be one of `al`, `blob`, `eip1559`, `eip7702`, `legacy`, `ra
 #### Other Commands
 - `exit` - Exit the application
 
-# TODO
+## Hall of fame
 
-- Happy path
-- Apply mutators on those happy paths
+- Crash in anvil $\Rightarrow$ [link](https://github.com/foundry-rs/foundry/issues/10444)
