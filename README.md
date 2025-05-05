@@ -57,6 +57,6 @@ Where `<runner>` can be one of `al`, `blob`, `eip1559`, `eip7702`, `legacy`, `ra
 #### Other Commands
 - `exit` - Exit the application
 
-## Hall of fame
+## Hall of fame 🏅
 
 - Crash in anvil $\Rightarrow$ [link](https://github.com/foundry-rs/foundry/issues/10444)
