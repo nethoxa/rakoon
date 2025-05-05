@@ -6,6 +6,15 @@
 
 This is a transaction fuzzer for the Ethereum Protocol, with per-transaction custom mutators, an user interface for seeing live data from the fuzzer and a terminal to ineract with it in real time. Huge thanks to [Marius van der Wijden](https://github.com/MariusVanDerWijden) for building [tx-fuzz](https://github.com/MariusVanDerWijden/tx-fuzz), which I used as reference in many parts of this project, as well as to the [alloy team](https://github.com/alloy-rs), as I leveraged heavily on them to build this.
 
+## Preview
+
+<div align="center">
+  <video src="https://github.com/nethoxa/rakoon/assets/video/poc.mov" width="600" controls></video>
+</div>
+
+If the video doesn't load, you can find it in the `video/poc.mov` file in this repository.
+
+
 ## Usage
 
 It is as simple as doing
