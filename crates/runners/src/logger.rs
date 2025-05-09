@@ -1,10 +1,10 @@
+use alloy::transports::{RpcError, TransportErrorKind};
+use chrono::Local;
 use std::{
     fs::{File, OpenOptions},
     io::{self, Write},
     path::Path,
 };
-use alloy::transports::{RpcError, TransportErrorKind};
-use chrono::Local;
 
 /// Logger structure for writing logs to a file with timestamp
 pub struct Logger {
@@ -16,11 +16,11 @@ impl Logger {
     fn ensure_directories(runner_name: &str) -> io::Result<()> {
         // Create logs directory if it doesn't exist
         std::fs::create_dir_all("logs")?;
-        
+
         // Create reports directory and runner subdirectory if they don't exist
         let reports_dir = format!("reports/{}", runner_name);
         std::fs::create_dir_all(&reports_dir)?;
-        
+
         Ok(())
     }
 
@@ -39,23 +39,17 @@ impl Logger {
 
         let timestamp = Local::now().format("%Y%m%d_%H%M%S").to_string();
         let filename = format!("logs/{}_log.log", runner_name);
-        
-        let mut file = OpenOptions::new()
-            .create(true)
-            .write(true)
-            .append(true)
-            .open(Path::new(&filename))?;
+
+        let mut file =
+            OpenOptions::new().create(true).write(true).append(true).open(Path::new(&filename))?;
 
         let startup_message = format!("[{}] Logger for {} started\n", timestamp, runner_name);
         file.write_all(startup_message.as_bytes())?;
         file.flush()?;
-        
-        Ok(Self {
-            file,
-            runner_name: runner_name.to_string(),
-        })
+
+        Ok(Self { file, runner_name: runner_name.to_string() })
     }
-    
+
     /// Logs a message with timestamp
     ///
     /// # Arguments
@@ -72,7 +66,7 @@ impl Logger {
         self.file.flush()?;
         Ok(())
     }
-    
+
     /// Logs an error message with timestamp
     ///
     /// # Arguments
@@ -92,14 +86,14 @@ impl Logger {
 
     pub fn generate_crash_report(&mut self, crash_data: &[u8]) -> io::Result<()> {
         let timestamp = Local::now().format("%Y%m%d_%H%M%S").to_string();
-        let report_filename = format!("reports/{}/crash_report_{}.txt", self.runner_name, timestamp);
-        
-        let mut report_file = OpenOptions::new()
-            .create(true)
-            .write(true)
-            .open(Path::new(&report_filename))?;
+        let report_filename =
+            format!("reports/{}/crash_report_{}.txt", self.runner_name, timestamp);
 
-        let formatted_data = format!("Transaction that crashed the node (hex): 0x{}\n", hex::encode(crash_data));
+        let mut report_file =
+            OpenOptions::new().create(true).write(true).open(Path::new(&report_filename))?;
+
+        let formatted_data =
+            format!("Transaction that crashed the node (hex): 0x{}\n", hex::encode(crash_data));
         report_file.write_all(formatted_data.as_bytes())?;
 
         report_file.flush()?;

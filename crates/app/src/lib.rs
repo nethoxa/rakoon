@@ -152,7 +152,7 @@ impl App {
         loop {
             // Update the status of all runners
             self.update_runners_status();
-            
+
             terminal.draw(|f| self.ui(f, &input))?;
 
             // We check if there is an event in the queue. If there is,
@@ -294,7 +294,7 @@ impl App {
 
         Ok(())
     }
-    
+
     /// Updates the status of all runners by checking if they are running
     fn update_runners_status(&mut self) {
         // Check if any runner is still running by checking their task handles

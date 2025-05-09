@@ -39,11 +39,7 @@ pub trait Builder {
 
     #[allow(async_fn_in_trait)]
     async fn gas_price(&self, random: &mut StdRng) -> u128 {
-        if random_bool(0.85) {
-            self.cache().gas_price
-        } else {
-            random.random::<u128>()
-        }
+        if random_bool(0.85) { self.cache().gas_price } else { random.random::<u128>() }
     }
 
     // ------------------------------------------------------------
@@ -57,22 +53,14 @@ pub trait Builder {
 
     #[allow(async_fn_in_trait)]
     async fn max_priority_fee_per_gas(&self, random: &mut StdRng) -> u128 {
-        if random_bool(0.85) {
-            self.cache().max_priority_fee
-        } else {
-            random.random::<u128>()
-        }
+        if random_bool(0.85) { self.cache().max_priority_fee } else { random.random::<u128>() }
     }
 
     // ------------------------------------------------------------
 
     #[allow(async_fn_in_trait)]
     async fn max_fee_per_blob_gas(&self, random: &mut StdRng) -> u128 {
-        if random_bool(0.85) {
-            self.cache().max_fee_per_blob_gas
-        } else {
-            random.random::<u128>()
-        }
+        if random_bool(0.85) { self.cache().max_fee_per_blob_gas } else { random.random::<u128>() }
     }
 
     // ------------------------------------------------------------
@@ -114,22 +102,14 @@ pub trait Builder {
 
     #[allow(async_fn_in_trait)]
     async fn nonce(&self, random: &mut StdRng) -> u64 {
-        if random_bool(0.90) {
-            self.cache().nonce
-        } else {
-            random.next_u64()
-        }
+        if random_bool(0.90) { self.cache().nonce } else { random.next_u64() }
     }
 
     // ------------------------------------------------------------
 
     #[allow(async_fn_in_trait)]
     async fn chain_id(&self, random: &mut StdRng) -> u64 {
-        if random_bool(0.95) {
-            self.cache().chain_id
-        } else {
-            random.next_u64()
-        }
+        if random_bool(0.95) { self.cache().chain_id } else { random.next_u64() }
     }
 
     // ------------------------------------------------------------

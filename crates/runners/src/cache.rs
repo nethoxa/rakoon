@@ -1,4 +1,7 @@
-use alloy::{primitives::{Address, U256}, providers::Provider};
+use alloy::{
+    primitives::{Address, U256},
+    providers::Provider,
+};
 use common::types::Backend;
 
 pub struct BuilderCache {

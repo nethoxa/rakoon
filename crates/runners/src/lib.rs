@@ -6,12 +6,12 @@ use std::{
 pub mod al;
 pub mod blob;
 pub mod builder;
+pub mod cache;
 pub mod eip1559;
 pub mod eip7702;
 pub mod legacy;
-pub mod random;
 pub mod logger;
-pub mod cache;
+pub mod random;
 
 #[derive(PartialEq, Eq, Hash, Clone, Copy)]
 pub enum Runner {

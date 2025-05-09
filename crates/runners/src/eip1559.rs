@@ -40,7 +40,12 @@ impl Builder for Eip1559TransactionRunner {
 }
 
 impl Eip1559TransactionRunner {
-    pub async fn new(rpc_url: Url, sk: SigningKey, seed: u64, max_operations_per_mutation: u64) -> Self {
+    pub async fn new(
+        rpc_url: Url,
+        sk: SigningKey,
+        seed: u64,
+        max_operations_per_mutation: u64,
+    ) -> Self {
         let provider = ProviderBuilder::new()
             .wallet::<PrivateKeySigner>(sk.clone().into())
             .connect_http(rpc_url);
@@ -59,7 +64,18 @@ impl Eip1559TransactionRunner {
         let mutator = Mutator::new(max_operations_per_mutation, seed);
         let logger = Logger::new("eip1559").unwrap();
 
-        Self { sk, seed, current_tx: vec![], provider, mutator, crash_counter: 0, running: false, logger, cache, sender }
+        Self {
+            sk,
+            seed,
+            current_tx: vec![],
+            provider,
+            mutator,
+            crash_counter: 0,
+            running: false,
+            logger,
+            cache,
+            sender,
+        }
     }
 
     pub async fn run(&mut self) {
@@ -92,7 +108,12 @@ impl Eip1559TransactionRunner {
                 }
             } else {
                 self.mutator.mutate(&mut self.current_tx);
-                if let Err(err) = self.provider.client().request::<_, TxHash>("eth_sendRawTransaction", &self.current_tx).await {
+                if let Err(err) = self
+                    .provider
+                    .client()
+                    .request::<_, TxHash>("eth_sendRawTransaction", &self.current_tx)
+                    .await
+                {
                     if self.logger.is_connection_refused_error(&err) {
                         let current_tx = self.current_tx.clone();
                         let _ = self.logger.generate_crash_report(&current_tx);
@@ -172,8 +193,9 @@ async fn test_eip1559_transaction_runner() {
         )
         .unwrap(),
         1,
-        1000
-    ).await;
+        1000,
+    )
+    .await;
     let tx = runner.create_eip1559_transaction(&mut rng).await;
     println!("tx: {:#?}", &tx);
 }

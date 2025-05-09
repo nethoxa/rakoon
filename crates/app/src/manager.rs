@@ -31,7 +31,8 @@ impl App {
                     let max_operations_per_mutation = self.max_operations_per_mutation;
                     async move {
                         let mut runner =
-                            ALTransactionRunner::new(rpc, sk, seed, max_operations_per_mutation).await;
+                            ALTransactionRunner::new(rpc, sk, seed, max_operations_per_mutation)
+                                .await;
                         runner.run().await;
                     }
                 });
@@ -45,7 +46,8 @@ impl App {
                     let max_operations_per_mutation = self.max_operations_per_mutation;
                     async move {
                         let mut runner =
-                            BlobTransactionRunner::new(rpc, sk, seed, max_operations_per_mutation).await;
+                            BlobTransactionRunner::new(rpc, sk, seed, max_operations_per_mutation)
+                                .await;
                         runner.run().await;
                     }
                 });
@@ -63,7 +65,8 @@ impl App {
                             sk,
                             seed,
                             max_operations_per_mutation,
-                        ).await;
+                        )
+                        .await;
                         runner.run().await;
                     }
                 });
@@ -81,7 +84,8 @@ impl App {
                             sk,
                             seed,
                             max_operations_per_mutation,
-                        ).await;
+                        )
+                        .await;
                         runner.run().await;
                     }
                 });
@@ -99,7 +103,8 @@ impl App {
                             sk,
                             seed,
                             max_operations_per_mutation,
-                        ).await;
+                        )
+                        .await;
                         runner.run().await;
                     }
                 });
@@ -117,7 +122,8 @@ impl App {
                             sk,
                             seed,
                             max_operations_per_mutation,
-                        ).await;
+                        )
+                        .await;
                         runner.run().await;
                     }
                 });
