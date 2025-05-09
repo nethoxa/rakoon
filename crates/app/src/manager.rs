@@ -2,7 +2,7 @@ use crate::App;
 use common::errors::Error;
 use runners::{
     Runner, Runner::*, al::ALTransactionRunner, blob::BlobTransactionRunner,
-    eip1559::EIP1559TransactionRunner, eip7702::EIP7702TransactionRunner,
+    eip1559::Eip1559TransactionRunner, eip7702::Eip7702TransactionRunner,
     legacy::LegacyTransactionRunner, random::RandomTransactionRunner,
 };
 
@@ -58,7 +58,7 @@ impl App {
                     let sk = sk.clone();
                     let max_operations_per_mutation = self.max_operations_per_mutation;
                     async move {
-                        let mut runner = EIP1559TransactionRunner::new(
+                        let mut runner = Eip1559TransactionRunner::new(
                             rpc,
                             sk,
                             seed,
@@ -76,7 +76,7 @@ impl App {
                     let sk = sk.clone();
                     let max_operations_per_mutation = self.max_operations_per_mutation;
                     async move {
-                        let mut runner = EIP7702TransactionRunner::new(
+                        let mut runner = Eip7702TransactionRunner::new(
                             rpc,
                             sk,
                             seed,

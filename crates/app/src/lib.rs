@@ -19,7 +19,7 @@ use ratatui::{
 };
 use runners::{
     Runner, Runner::*, al::ALTransactionRunner, blob::BlobTransactionRunner,
-    eip1559::EIP1559TransactionRunner, eip7702::EIP7702TransactionRunner,
+    eip1559::Eip1559TransactionRunner, eip7702::Eip7702TransactionRunner,
     legacy::LegacyTransactionRunner, random::RandomTransactionRunner,
 };
 use std::{collections::HashMap, io, time::Duration};
@@ -102,10 +102,10 @@ pub struct App {
     blob_runner: BlobTransactionRunner,
 
     // The EIP-1559 runner.
-    eip1559_runner: EIP1559TransactionRunner,
+    eip1559_runner: Eip1559TransactionRunner,
 
     // The EIP-7702 runner.
-    eip7702_runner: EIP7702TransactionRunner,
+    eip7702_runner: Eip7702TransactionRunner,
 
     // The active runners. This is used to know which runners are
     // currently running and update the information in the UI
@@ -175,13 +175,13 @@ impl App {
                 seed,
                 max_operations_per_mutation,
             ),
-            eip1559_runner: EIP1559TransactionRunner::new(
+            eip1559_runner: Eip1559TransactionRunner::new(
                 rpc_url.clone(),
                 sk.clone(),
                 seed,
                 max_operations_per_mutation,
             ),
-            eip7702_runner: EIP7702TransactionRunner::new(
+            eip7702_runner: Eip7702TransactionRunner::new(
                 rpc_url.clone(),
                 sk.clone(),
                 seed,
