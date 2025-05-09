@@ -17,7 +17,6 @@ use rand::{Rng, RngCore, random_bool, rngs::StdRng};
 
 pub trait Builder {
     fn provider(&self) -> &Backend;
-    fn is_running(&self) -> bool;
 
     // ------------------------------------------------------------
 

@@ -28,10 +28,6 @@ impl Builder for ALTransactionRunner {
     fn provider(&self) -> &Backend {
         &self.provider
     }
-
-    fn is_running(&self) -> bool {
-        self.running
-    }
 }
 
 impl ALTransactionRunner {

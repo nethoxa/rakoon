@@ -28,10 +28,6 @@ impl Builder for Eip1559TransactionRunner {
     fn provider(&self) -> &Backend {
         &self.provider
     }
-
-    fn is_running(&self) -> bool {
-        self.running
-    }
 }
 
 impl Eip1559TransactionRunner {

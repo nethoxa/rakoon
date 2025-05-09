@@ -734,10 +734,7 @@ impl App {
             for runner in [
                 AL, Blob, EIP1559, EIP7702, Legacy, Random,
             ] {
-                if let Err(e) = self.start_runner(runner).await {
-                    self.print(&format!("error starting runner: {}", e));
-                    return Err(AppStatus::RuntimeError);
-                }
+                let _ = self.start_runner(runner).await;
             }
             self.print("all runners started");
             return Ok(());

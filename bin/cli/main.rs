@@ -11,7 +11,8 @@ struct Cli {
     #[arg(
         long,
         help = "Faucet key",
-        default_value = "0xcdfbe6f7602f67a97602e3e9fc24cde1cdffa88acd47745c0b84c5ff55891e1b"
+        //default_value = "0xcdfbe6f7602f67a97602e3e9fc24cde1cdffa88acd47745c0b84c5ff55891e1b"
+        default_value = "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80"
     )]
     sk: String,
     #[arg(long, help = "Seed for the random number generator", default_value = "0")]

@@ -17,9 +17,7 @@ use ratatui::{
         Block, Borders, List, ListItem, ListState, Paragraph, Scrollbar, ScrollbarState, Wrap,
     },
 };
-use runners::{
-    al::ALTransactionRunner, blob::BlobTransactionRunner, builder::Builder, eip1559::Eip1559TransactionRunner, eip7702::Eip7702TransactionRunner, legacy::LegacyTransactionRunner, random::RandomTransactionRunner, Runner::{self, *}
-};
+use runners::{Runner, Runner::*};
 use std::{collections::HashMap, io, time::Duration};
 use tokio::task::JoinHandle;
 pub mod errors;
@@ -31,7 +29,7 @@ pub struct App {
     // UI to know if there are any `Runners` running.
     running: bool,
 
-    // The global seed all runners will use. If per-runner seeds [nethoxa] TODO this func
+    // The global seed all runners will use. If per-runner seeds
     // are used, this won't be used and will dissapear from the UI.
     seed: u64,
 
@@ -87,24 +85,6 @@ pub struct App {
     // either a specific runner or all runners.
     handler: HashMap<Runner, JoinHandle<()>>,
 
-    // The random runner.
-    random_runner: RandomTransactionRunner,
-
-    // The legacy runner.
-    legacy_runner: LegacyTransactionRunner,
-
-    // The AL runner.
-    al_runner: ALTransactionRunner,
-
-    // The blob runner.
-    blob_runner: BlobTransactionRunner,
-
-    // The EIP-1559 runner.
-    eip1559_runner: Eip1559TransactionRunner,
-
-    // The EIP-7702 runner.
-    eip7702_runner: Eip7702TransactionRunner,
-
     // The active runners. This is used to know which runners are
     // currently running and update the information in the UI
     // accordingly.
@@ -149,42 +129,6 @@ impl App {
             left_panel_width: 70,
             input_height: 3,
             handler: HashMap::new(),
-            random_runner: RandomTransactionRunner::new(
-                rpc_url.clone(),
-                sk.clone(),
-                seed,
-                max_operations_per_mutation,
-            ),
-            legacy_runner: LegacyTransactionRunner::new(
-                rpc_url.clone(),
-                sk.clone(),
-                seed,
-                max_operations_per_mutation,
-            ),
-            al_runner: ALTransactionRunner::new(
-                rpc_url.clone(),
-                sk.clone(),
-                seed,
-                max_operations_per_mutation,
-            ),
-            blob_runner: BlobTransactionRunner::new(
-                rpc_url.clone(),
-                sk.clone(),
-                seed,
-                max_operations_per_mutation,
-            ),
-            eip1559_runner: Eip1559TransactionRunner::new(
-                rpc_url.clone(),
-                sk.clone(),
-                seed,
-                max_operations_per_mutation,
-            ),
-            eip7702_runner: Eip7702TransactionRunner::new(
-                rpc_url.clone(),
-                sk.clone(),
-                seed,
-                max_operations_per_mutation,
-            ),
             active_runners: HashMap::new(),
             runner_seeds: HashMap::new(),
             runner_sks: HashMap::new(),
@@ -353,38 +297,17 @@ impl App {
     
     /// Updates the status of all runners by checking if they are running
     fn update_runners_status(&mut self) {
-        // Check if Random runner is running
-        if let Some(is_active) = self.active_runners.get_mut(&Random) {
-            *is_active = self.random_runner.is_running();
+        // Check if any runner is still running by checking their task handles
+        for (runner_type, handle) in &self.handler {
+            if !handle.is_finished() {
+                self.active_runners.insert(*runner_type, true);
+            } else {
+                self.active_runners.remove(runner_type);
+            }
         }
-        
-        // Check if Legacy runner is running
-        if let Some(is_active) = self.active_runners.get_mut(&Legacy) {
-            *is_active = self.legacy_runner.is_running();
-        }
-        
-        // Check if AL runner is running
-        if let Some(is_active) = self.active_runners.get_mut(&AL) {
-            *is_active = self.al_runner.is_running();
-        }
-        
-        // Check if Blob runner is running
-        if let Some(is_active) = self.active_runners.get_mut(&Blob) {
-            *is_active = self.blob_runner.is_running();
-        }
-        
-        // Check if EIP1559 runner is running
-        if let Some(is_active) = self.active_runners.get_mut(&EIP1559) {
-            *is_active = self.eip1559_runner.is_running();
-        }
-        
-        // Check if EIP7702 runner is running
-        if let Some(is_active) = self.active_runners.get_mut(&EIP7702) {
-            *is_active = self.eip7702_runner.is_running();
-        }
-        
+
         // Update the global running status based on whether any runner is active
-        self.running = self.active_runners.values().any(|&is_active| is_active);
+        self.running = !self.active_runners.is_empty();
     }
 
     /// This is the function that renders the UI.

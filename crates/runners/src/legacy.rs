@@ -27,10 +27,6 @@ impl Builder for LegacyTransactionRunner {
     fn provider(&self) -> &Backend {
         &self.provider
     }
-
-    fn is_running(&self) -> bool {
-        self.running
-    }
 }
 
 impl LegacyTransactionRunner {
