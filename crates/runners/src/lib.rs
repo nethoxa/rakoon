@@ -11,6 +11,7 @@ pub mod eip7702;
 pub mod legacy;
 pub mod random;
 pub mod logger;
+pub mod cache;
 
 #[derive(PartialEq, Eq, Hash, Clone, Copy)]
 pub enum Runner {

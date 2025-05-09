@@ -2,7 +2,6 @@ use alloy::{
     consensus::BlobTransactionSidecar,
     eips::{eip4844::BYTES_PER_BLOB, eip7702::SignedAuthorization},
     primitives::{Address, Bytes, FixedBytes, TxKind, U256},
-    providers::Provider,
     rpc::types::{AccessList, AccessListItem, Authorization, TransactionInput},
 };
 use common::{
@@ -15,8 +14,12 @@ use common::{
 };
 use rand::{Rng, RngCore, random_bool, rngs::StdRng};
 
+use crate::cache::BuilderCache;
+
 pub trait Builder {
     fn provider(&self) -> &Backend;
+    fn cache(&self) -> &BuilderCache;
+    fn cache_mut(&mut self) -> &mut BuilderCache;
 
     // ------------------------------------------------------------
 
@@ -37,11 +40,7 @@ pub trait Builder {
     #[allow(async_fn_in_trait)]
     async fn gas_price(&self, random: &mut StdRng) -> u128 {
         if random_bool(0.85) {
-            if let Ok(price) = self.provider().get_gas_price().await {
-                price
-            } else {
-                random.random::<u128>()
-            }
+            self.cache().gas_price
         } else {
             random.random::<u128>()
         }
@@ -59,11 +58,7 @@ pub trait Builder {
     #[allow(async_fn_in_trait)]
     async fn max_priority_fee_per_gas(&self, random: &mut StdRng) -> u128 {
         if random_bool(0.85) {
-            if let Ok(fee) = self.provider().get_max_priority_fee_per_gas().await {
-                fee
-            } else {
-                random.random::<u128>()
-            }
+            self.cache().max_priority_fee
         } else {
             random.random::<u128>()
         }
@@ -74,11 +69,7 @@ pub trait Builder {
     #[allow(async_fn_in_trait)]
     async fn max_fee_per_blob_gas(&self, random: &mut StdRng) -> u128 {
         if random_bool(0.85) {
-            if let Ok(fee) = self.provider().get_blob_base_fee().await {
-                fee
-            } else {
-                random.random::<u128>()
-            }
+            self.cache().max_fee_per_blob_gas
         } else {
             random.random::<u128>()
         }
@@ -94,13 +85,9 @@ pub trait Builder {
     // ------------------------------------------------------------
 
     #[allow(async_fn_in_trait)]
-    async fn value(&self, random: &mut StdRng, sender: Address) -> U256 {
+    async fn value(&self, random: &mut StdRng) -> U256 {
         if random_bool(0.85) {
-            if let Ok(balance) = self.provider().get_account(sender).await {
-                balance.balance / U256::from(100_000_000)
-            } else {
-                self.random_u256(random)
-            }
+            self.cache().balance / U256::from(100_000_000)
         } else {
             self.random_u256(random)
         }
@@ -126,13 +113,9 @@ pub trait Builder {
     // ------------------------------------------------------------
 
     #[allow(async_fn_in_trait)]
-    async fn nonce(&self, random: &mut StdRng, sender: Address) -> u64 {
-        if random_bool(0.85) {
-            if let Ok(nonce) = self.provider().get_account(sender).await {
-                nonce.nonce
-            } else {
-                random.next_u64()
-            }
+    async fn nonce(&self, random: &mut StdRng) -> u64 {
+        if random_bool(0.90) {
+            self.cache().nonce
         } else {
             random.next_u64()
         }
@@ -142,12 +125,8 @@ pub trait Builder {
 
     #[allow(async_fn_in_trait)]
     async fn chain_id(&self, random: &mut StdRng) -> u64 {
-        if random_bool(0.85) {
-            if let Ok(chain_id) = self.provider().get_chain_id().await {
-                chain_id
-            } else {
-                random.next_u64()
-            }
+        if random_bool(0.95) {
+            self.cache().chain_id
         } else {
             random.next_u64()
         }

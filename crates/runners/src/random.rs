@@ -1,4 +1,4 @@
-use crate::{builder::Builder, logger::Logger};
+use crate::{builder::Builder, cache::BuilderCache, logger::Logger};
 use alloy::{
     consensus::{
         TxEip1559, TxEip2930, TxEip4844, TxEip4844WithSidecar, TxEip7702, TxLegacy,
@@ -23,24 +23,45 @@ pub struct RandomTransactionRunner {
     pub running: bool,
     pub crash_counter: u64,
     pub logger: Logger,
+    pub cache: BuilderCache,
+    pub sender: Address,
 }
 
 impl Builder for RandomTransactionRunner {
     fn provider(&self) -> &Backend {
         &self.provider
     }
+
+    fn cache(&self) -> &BuilderCache {
+        &self.cache
+    }
+
+    fn cache_mut(&mut self) -> &mut BuilderCache {
+        &mut self.cache
+    }
 }
 
 impl RandomTransactionRunner {
-    pub fn new(rpc_url: Url, sk: SigningKey, seed: u64, max_operations_per_mutation: u64) -> Self {
+    pub async fn new(rpc_url: Url, sk: SigningKey, seed: u64, max_operations_per_mutation: u64) -> Self {
         let provider = ProviderBuilder::new()
             .wallet::<PrivateKeySigner>(sk.clone().into())
             .connect_http(rpc_url);
 
+        let sender = Address::from_private_key(&sk);
+        let account = provider.get_account(sender).await.unwrap_or_default();
+        let cache = BuilderCache {
+            gas_price: provider.get_gas_price().await.unwrap_or_default(),
+            max_priority_fee: provider.get_max_priority_fee_per_gas().await.unwrap_or_default(),
+            max_fee_per_blob_gas: provider.get_blob_base_fee().await.unwrap_or_default(),
+            balance: account.balance,
+            nonce: account.nonce,
+            chain_id: provider.get_chain_id().await.unwrap_or_default(),
+        };
+
         let mutator = Mutator::new(max_operations_per_mutation, seed);
         let logger = Logger::new("random").unwrap();
 
-        Self { sk, seed, current_tx: vec![], provider, mutator, running: false, crash_counter: 0, logger }
+        Self { sk, seed, current_tx: vec![], provider, mutator, running: false, crash_counter: 0, logger, cache, sender }
     }
 
     pub async fn run(&mut self) {
@@ -51,7 +72,14 @@ impl RandomTransactionRunner {
         loop {
             // 10% chance to re-generate the transaction
             if random_bool(0.1) || self.current_tx.is_empty() {
-                let (request, tx) = self.create_random_transaction(&mut random, sender).await;
+                // 50% chance to update the cache
+                // This is to try to get further in the execution by bypassing
+                // common checks like gas > expected and so on
+                if random_bool(0.5) {
+                    self.cache.update(&self.provider, self.sender).await;
+                }
+
+                let (request, tx) = self.create_random_transaction(&mut random).await;
                 tx.encode(&mut self.current_tx);
 
                 if let Err(err) = self.provider.send_transaction_unsafe(request).await {
@@ -85,7 +113,6 @@ impl RandomTransactionRunner {
     pub async fn create_random_transaction(
         &self,
         random: &mut StdRng,
-        sender: Address,
     ) -> (TransactionRequest, Vec<u8>) {
         let to = self.to(random);
         let gas_price = self.gas_price(random).await;
@@ -93,9 +120,9 @@ impl RandomTransactionRunner {
         let max_priority_fee_per_gas = self.max_priority_fee_per_gas(random).await;
         let max_fee_per_blob_gas = self.max_fee_per_blob_gas(random).await;
         let gas = self.gas(random);
-        let value = self.value(random, sender).await;
+        let value = self.value(random).await;
         let input = self.input(random);
-        let nonce = self.nonce(random, sender).await;
+        let nonce = self.nonce(random).await;
         let chain_id = self.chain_id(random).await;
         let access_list = self.access_list(random);
         let transaction_type = self.transaction_type(random);
@@ -104,7 +131,7 @@ impl RandomTransactionRunner {
         let authorization_list = self.authorization_list(random);
 
         let request = TransactionRequest {
-            from: Some(sender),
+            from: Some(self.sender),
             to: Some(to),
             gas_price: Some(gas_price),
             max_fee_per_gas: Some(max_fee_per_gas),
@@ -229,8 +256,8 @@ async fn test_random_transaction_runner() {
         )
         .unwrap(),
         1,
-        1000,
-    );
-    let tx = runner.create_random_transaction(&mut rng, Address::ZERO).await;
+        1000
+    ).await;
+    let tx = runner.create_random_transaction(&mut rng).await;
     println!("tx: {:#?}", &tx);
 }

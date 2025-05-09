@@ -25,7 +25,7 @@ impl App {
     // Helper function to check if a parameter is valid
     fn is_valid_param(&self, param: &str) -> bool {
         [
-            "rpc", "sk", "seed",
+            "rpc", "sk", "seed", "chainid",
         ]
         .contains(&param)
     }

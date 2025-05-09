@@ -1,4 +1,4 @@
-use crate::builder::Builder;
+use crate::{builder::Builder, cache::BuilderCache};
 use alloy::{
     consensus::TxEip2930,
     primitives::{Address, TxHash},
@@ -22,35 +22,62 @@ pub struct ALTransactionRunner {
     pub crash_counter: u64,
     pub running: bool,
     pub logger: Logger,
+    pub cache: BuilderCache,
+    pub sender: Address,
 }
 
 impl Builder for ALTransactionRunner {
     fn provider(&self) -> &Backend {
         &self.provider
     }
+
+    fn cache(&self) -> &BuilderCache {
+        &self.cache
+    }
+
+    fn cache_mut(&mut self) -> &mut BuilderCache {
+        &mut self.cache
+    }
 }
 
 impl ALTransactionRunner {
-    pub fn new(rpc_url: Url, sk: SigningKey, seed: u64, max_operations_per_mutation: u64) -> Self {
+    pub async fn new(rpc_url: Url, sk: SigningKey, seed: u64, max_operations_per_mutation: u64) -> Self {
         let provider = ProviderBuilder::new()
             .wallet::<PrivateKeySigner>(sk.clone().into())
             .connect_http(rpc_url);
 
+        let sender = Address::from_private_key(&sk);
+        let account = provider.get_account(sender).await.unwrap_or_default();
+        let cache = BuilderCache {
+            gas_price: provider.get_gas_price().await.unwrap_or_default(),
+            max_priority_fee: provider.get_max_priority_fee_per_gas().await.unwrap_or_default(),
+            max_fee_per_blob_gas: provider.get_blob_base_fee().await.unwrap_or_default(),
+            balance: account.balance,
+            nonce: account.nonce,
+            chain_id: provider.get_chain_id().await.unwrap_or_default(),
+        };
+
         let mutator = Mutator::new(max_operations_per_mutation, seed);
         let logger = Logger::new("al").unwrap();
 
-        Self { sk, seed, current_tx: vec![], provider, mutator, crash_counter: 0, running: false, logger }
+        Self { sk, seed, current_tx: vec![], provider, mutator, crash_counter: 0, running: false, logger, cache, sender }
     }
 
     pub async fn run(&mut self) {
         let mut random = StdRng::seed_from_u64(self.seed);
-        let sender = Address::from_private_key(&self.sk);
         self.running = true;
 
         loop {
             // 10% chance to re-generate the transaction
             if random_bool(0.1) || self.current_tx.is_empty() {
-                let (request, tx) = self.create_access_list_transaction(&mut random, sender).await;
+                // 50% chance to update the cache
+                // This is to try to get further in the execution by bypassing
+                // common checks like gas > expected and so on
+                if random_bool(0.5) {
+                    self.cache.update(&self.provider, self.sender).await;
+                }
+
+                let (request, tx) = self.create_access_list_transaction(&mut random).await;
                 tx.encode(&mut self.current_tx);
 
                 if let Err(err) = self.provider.send_transaction_unsafe(request).await {
@@ -84,7 +111,6 @@ impl ALTransactionRunner {
     pub async fn create_access_list_transaction(
         &self,
         random: &mut StdRng,
-        sender: Address,
     ) -> (TransactionRequest, TxEip2930) {
         // EIP-2930 transaction type
         let transaction_type = 1;
@@ -92,14 +118,14 @@ impl ALTransactionRunner {
         let to = self.to(random);
         let gas_price = self.gas_price(random).await;
         let gas_limit = self.gas(random);
-        let value = self.value(random, sender).await;
+        let value = self.value(random).await;
         let input = self.input(random);
-        let nonce = self.nonce(random, sender).await;
+        let nonce = self.nonce(random).await;
         let chain_id = self.chain_id(random).await;
         let access_list = self.access_list(random);
 
         let request = TransactionRequest {
-            from: Some(sender),
+            from: Some(self.sender),
             to: Some(to),
             gas_price: Some(gas_price),
             max_fee_per_gas: None,
@@ -145,8 +171,8 @@ async fn test_access_list_transaction_runner() {
         )
         .unwrap(),
         1,
-        1000,
-    );
-    let tx = runner.create_access_list_transaction(&mut rng, Address::ZERO).await;
-    println!("tx: {:#?}", &tx);
+        1000
+    ).await;
+    let (request, _) = runner.create_access_list_transaction(&mut rng).await;
+    println!("tx: {:#?}", &request);
 }
