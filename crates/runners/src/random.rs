@@ -33,14 +33,6 @@ impl Builder for RandomTransactionRunner {
     fn is_running(&self) -> bool {
         self.running
     }
-
-    fn crash_counter(&self) -> u64 {
-        self.crash_counter
-    }
-
-    fn logger(&mut self) -> &mut Logger {
-        &mut self.logger
-    }
 }
 
 impl RandomTransactionRunner {
@@ -67,7 +59,7 @@ impl RandomTransactionRunner {
                 tx.encode(&mut self.current_tx);
 
                 if let Err(err) = self.provider.send_transaction_unsafe(request).await {
-                    if Self::is_connection_refused_error(&err) {
+                    if self.logger.is_connection_refused_error(&err) {
                         let current_tx = self.current_tx.clone();
                         let _ = self.logger.generate_crash_report(&current_tx);
 
@@ -80,7 +72,7 @@ impl RandomTransactionRunner {
             } else {
                 self.mutator.mutate(&mut self.current_tx);
                 if let Err(err) = self.provider.client().request::<_, TxHash>("eth_sendRawTransaction", &self.current_tx).await {
-                    if Self::is_connection_refused_error(&err) {
+                    if self.logger.is_connection_refused_error(&err) {
                         let current_tx = self.current_tx.clone();
                         let _ = self.logger.generate_crash_report(&current_tx);
 

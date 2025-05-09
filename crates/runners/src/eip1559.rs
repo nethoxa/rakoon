@@ -32,14 +32,6 @@ impl Builder for Eip1559TransactionRunner {
     fn is_running(&self) -> bool {
         self.running
     }
-
-    fn crash_counter(&self) -> u64 {
-        self.crash_counter
-    }
-    
-    fn logger(&mut self) -> &mut Logger {
-        &mut self.logger
-    }
 }
 
 impl Eip1559TransactionRunner {
@@ -66,7 +58,7 @@ impl Eip1559TransactionRunner {
                 tx.encode(&mut self.current_tx);
 
                 if let Err(err) = self.provider.send_transaction_unsafe(request).await {
-                    if Self::is_connection_refused_error(&err) {
+                    if self.logger.is_connection_refused_error(&err) {
                         let current_tx = self.current_tx.clone();
                         let _ = self.logger.generate_crash_report(&current_tx);
 
@@ -79,7 +71,7 @@ impl Eip1559TransactionRunner {
             } else {
                 self.mutator.mutate(&mut self.current_tx);
                 if let Err(err) = self.provider.client().request::<_, TxHash>("eth_sendRawTransaction", &self.current_tx).await {
-                    if Self::is_connection_refused_error(&err) {
+                    if self.logger.is_connection_refused_error(&err) {
                         let current_tx = self.current_tx.clone();
                         let _ = self.logger.generate_crash_report(&current_tx);
 

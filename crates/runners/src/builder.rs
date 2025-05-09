@@ -22,8 +22,6 @@ use crate::logger::Logger;
 pub trait Builder {
     fn provider(&self) -> &Backend;
     fn is_running(&self) -> bool;
-    fn crash_counter(&self) -> u64;
-    fn logger(&mut self) -> &mut Logger;
 
     // ------------------------------------------------------------
 
@@ -367,38 +365,5 @@ pub trait Builder {
         let mut addr = [0u8; 20];
         random.fill(&mut addr);
         Address::from(addr)
-    }
-
-    // ------------------------------------------------------------
-
-    fn is_connection_refused_error(err: &RpcError<TransportErrorKind>) -> bool {
-        let formatted_err = format!("{:#?}", err);
-        formatted_err.contains("Connection refused")
-    }
-
-    #[allow(async_fn_in_trait)]
-    async fn generate_crash_report(&mut self, tx_bytes: &[u8]) {
-        let report = format!(
-            "Transaction bytes (hex): 0x{}\n",
-            hex::encode(tx_bytes)
-        );
-        
-        match OpenOptions::new()
-            .create(true)
-            .write(true)
-            .open(format!("crash_report_legacy_{}.log", self.crash_counter())) 
-        {
-            Ok(mut file) => {
-                if let Err(e) = file.write_all(report.as_bytes()) {
-                    let _ = self.logger().log_error(&format!("Failed to write crash report to file: {}", e));
-                }
-                if let Err(e) = file.flush() {
-                    let _ = self.logger().log_error(&format!("Failed to flush crash report file: {}", e));
-                }
-            }
-            Err(e) => {
-                let _ = self.logger().log_error(&format!("Failed to open crash report file: {}", e));
-            }
-        }
     }
 }

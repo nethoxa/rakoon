@@ -3,6 +3,7 @@ use std::{
     io::{self, Write},
     path::Path,
 };
+use alloy::transports::{RpcError, TransportErrorKind};
 use chrono::Local;
 
 /// Logger structure for writing logs to a file with timestamp
@@ -103,5 +104,10 @@ impl Logger {
 
         report_file.flush()?;
         Ok(())
+    }
+
+    pub fn is_connection_refused_error(&self, err: &RpcError<TransportErrorKind>) -> bool {
+        let formatted_err = format!("{:#?}", err);
+        formatted_err.contains("Connection refused")
     }
 }
