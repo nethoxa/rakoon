@@ -82,7 +82,6 @@ impl RandomTransactionRunner {
 
     pub async fn run(&mut self) {
         let mut random = StdRng::seed_from_u64(self.seed);
-        let sender = Address::from_private_key(&self.sk);
         self.running = true;
 
         loop {
