@@ -18,9 +18,7 @@ use ratatui::{
     },
 };
 use runners::{
-    Runner, Runner::*, al::ALTransactionRunner, blob::BlobTransactionRunner,
-    eip1559::Eip1559TransactionRunner, eip7702::Eip7702TransactionRunner,
-    legacy::LegacyTransactionRunner, random::RandomTransactionRunner,
+    al::ALTransactionRunner, blob::BlobTransactionRunner, builder::Builder, eip1559::Eip1559TransactionRunner, eip7702::Eip7702TransactionRunner, legacy::LegacyTransactionRunner, random::RandomTransactionRunner, Runner::{self, *}
 };
 use std::{collections::HashMap, io, time::Duration};
 use tokio::task::JoinHandle;
@@ -208,6 +206,9 @@ impl App {
 
         let mut input = String::new();
         loop {
+            // Update the status of all runners
+            self.update_runners_status();
+            
             terminal.draw(|f| self.ui(f, &input))?;
 
             // We check if there is an event in the queue. If there is,
@@ -348,6 +349,42 @@ impl App {
         terminal.show_cursor()?;
 
         Ok(())
+    }
+    
+    /// Updates the status of all runners by checking if they are running
+    fn update_runners_status(&mut self) {
+        // Check if Random runner is running
+        if let Some(is_active) = self.active_runners.get_mut(&Random) {
+            *is_active = self.random_runner.is_running();
+        }
+        
+        // Check if Legacy runner is running
+        if let Some(is_active) = self.active_runners.get_mut(&Legacy) {
+            *is_active = self.legacy_runner.is_running();
+        }
+        
+        // Check if AL runner is running
+        if let Some(is_active) = self.active_runners.get_mut(&AL) {
+            *is_active = self.al_runner.is_running();
+        }
+        
+        // Check if Blob runner is running
+        if let Some(is_active) = self.active_runners.get_mut(&Blob) {
+            *is_active = self.blob_runner.is_running();
+        }
+        
+        // Check if EIP1559 runner is running
+        if let Some(is_active) = self.active_runners.get_mut(&EIP1559) {
+            *is_active = self.eip1559_runner.is_running();
+        }
+        
+        // Check if EIP7702 runner is running
+        if let Some(is_active) = self.active_runners.get_mut(&EIP7702) {
+            *is_active = self.eip7702_runner.is_running();
+        }
+        
+        // Update the global running status based on whether any runner is active
+        self.running = self.active_runners.values().any(|&is_active| is_active);
     }
 
     /// This is the function that renders the UI.

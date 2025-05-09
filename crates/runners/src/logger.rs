@@ -1,7 +1,8 @@
-use std::fs::{File, OpenOptions};
-use std::io::{self, Write};
-use std::path::Path;
-use std::sync::{Arc, Mutex};
+use std::{
+    fs::{File, OpenOptions},
+    io::{self, Write},
+    path::Path,
+};
 use chrono::Local;
 
 /// Logger structure for writing logs to a file with timestamp
@@ -11,6 +12,17 @@ pub struct Logger {
 }
 
 impl Logger {
+    fn ensure_directories(runner_name: &str) -> io::Result<()> {
+        // Create logs directory if it doesn't exist
+        std::fs::create_dir_all("logs")?;
+        
+        // Create reports directory and runner subdirectory if they don't exist
+        let reports_dir = format!("reports/{}", runner_name);
+        std::fs::create_dir_all(&reports_dir)?;
+        
+        Ok(())
+    }
+
     /// Creates a new logger instance for the specified runner
     ///
     /// # Arguments
@@ -21,8 +33,11 @@ impl Logger {
     ///
     /// A Result containing the Logger instance or an IO error
     pub fn new(runner_name: &str) -> io::Result<Self> {
+        // Ensure directories exist
+        Self::ensure_directories(runner_name)?;
+
         let timestamp = Local::now().format("%Y%m%d_%H%M%S").to_string();
-        let filename = format!("{}_log.log", runner_name);
+        let filename = format!("logs/{}_log.log", runner_name);
         
         let mut file = OpenOptions::new()
             .create(true)
@@ -50,11 +65,11 @@ impl Logger {
     ///
     /// A Result indicating success or an IO error
     pub fn log(&mut self, message: &str) -> io::Result<()> {
-        let timestamp = Local::now().format("%Y-%m-%d %H:%M:%S%.3f").to_string();
-        let log_line = format!("[{}] {}\n", timestamp, message);
-
-        self.file.write_all(log_line.as_bytes())?;
-        self.file.flush()
+        let timestamp = Local::now().format("%Y-%m-%d %H:%M:%S").to_string();
+        let log_message = format!("[{}] {}\n", timestamp, message);
+        self.file.write_all(log_message.as_bytes())?;
+        self.file.flush()?;
+        Ok(())
     }
     
     /// Logs an error message with timestamp
@@ -72,5 +87,21 @@ impl Logger {
 
         self.file.write_all(log_line.as_bytes())?;
         self.file.flush()
+    }
+
+    pub fn generate_crash_report(&mut self, crash_data: &[u8]) -> io::Result<()> {
+        let timestamp = Local::now().format("%Y%m%d_%H%M%S").to_string();
+        let report_filename = format!("reports/{}/crash_report_{}.txt", self.runner_name, timestamp);
+        
+        let mut report_file = OpenOptions::new()
+            .create(true)
+            .write(true)
+            .open(Path::new(&report_filename))?;
+
+        let formatted_data = format!("Transaction that crashed the node (hex): 0x{}\n", hex::encode(crash_data));
+        report_file.write_all(formatted_data.as_bytes())?;
+
+        report_file.flush()?;
+        Ok(())
     }
 }

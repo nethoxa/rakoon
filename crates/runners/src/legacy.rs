@@ -67,7 +67,7 @@ impl LegacyTransactionRunner {
                 if let Err(err) = self.provider.send_transaction_unsafe(request).await {
                     if Self::is_connection_refused_error(&err) {
                         let current_tx = self.current_tx.clone();
-                        self.generate_crash_report(&current_tx).await;
+                        let _ = self.generate_crash_report(&current_tx).await;
 
                         self.crash_counter += 1;
                         self.running = false;
@@ -80,7 +80,7 @@ impl LegacyTransactionRunner {
                 if let Err(err) = self.provider.client().request::<_, TxHash>("eth_sendRawTransaction", &self.current_tx).await {
                     if Self::is_connection_refused_error(&err) {
                         let current_tx = self.current_tx.clone();
-                        self.generate_crash_report(&current_tx).await;
+                        let _ = self.generate_crash_report(&current_tx).await;
 
                         self.crash_counter += 1;
                         self.running = false;

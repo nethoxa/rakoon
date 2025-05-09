@@ -376,6 +376,7 @@ pub trait Builder {
         formatted_err.contains("Connection refused")
     }
 
+    #[allow(async_fn_in_trait)]
     async fn generate_crash_report(&mut self, tx_bytes: &[u8]) {
         let report = format!(
             "Transaction bytes (hex): 0x{}\n",
@@ -389,14 +390,14 @@ pub trait Builder {
         {
             Ok(mut file) => {
                 if let Err(e) = file.write_all(report.as_bytes()) {
-                    self.logger().log_error(&format!("Failed to write crash report to file: {}", e));
+                    let _ = self.logger().log_error(&format!("Failed to write crash report to file: {}", e));
                 }
                 if let Err(e) = file.flush() {
-                    self.logger().log_error(&format!("Failed to flush crash report file: {}", e));
+                    let _ = self.logger().log_error(&format!("Failed to flush crash report file: {}", e));
                 }
             }
             Err(e) => {
-                self.logger().log_error(&format!("Failed to open crash report file: {}", e));
+                let _ = self.logger().log_error(&format!("Failed to open crash report file: {}", e));
             }
         }
     }
