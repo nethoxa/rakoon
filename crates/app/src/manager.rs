@@ -124,7 +124,6 @@ impl App {
 
                 self.handler.insert(runner_type, handle);
             }
-            _ => return Err(Error::RuntimeError),
         }
 
         self.active_runners.insert(runner_type, true);

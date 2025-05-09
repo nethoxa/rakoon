@@ -1,11 +1,9 @@
-use std::{fs::OpenOptions, io::Write};
-
 use alloy::{
     consensus::BlobTransactionSidecar,
     eips::{eip4844::BYTES_PER_BLOB, eip7702::SignedAuthorization},
     primitives::{Address, Bytes, FixedBytes, TxKind, U256},
     providers::Provider,
-    rpc::types::{AccessList, AccessListItem, Authorization, TransactionInput}, transports::{RpcError, TransportErrorKind},
+    rpc::types::{AccessList, AccessListItem, Authorization, TransactionInput},
 };
 use common::{
     constants::{
@@ -16,8 +14,6 @@ use common::{
     types::Backend,
 };
 use rand::{Rng, RngCore, random_bool, rngs::StdRng};
-
-use crate::logger::Logger;
 
 pub trait Builder {
     fn provider(&self) -> &Backend;

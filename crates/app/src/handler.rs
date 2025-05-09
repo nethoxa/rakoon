@@ -30,15 +30,6 @@ impl App {
         .contains(&param)
     }
 
-    // Helper function to parse a boolean
-    fn parse_bool(&self, value: &str) -> Result<bool, AppStatus> {
-        match value {
-            "true" => Ok(true),
-            "false" => Ok(false),
-            _ => Err(AppStatus::RuntimeError),
-        }
-    }
-
     // Helper function to handle setting globalconfig values
     fn handle_global_set(&mut self, param: &str, value: &str) -> Result<(), AppStatus> {
         match param {
