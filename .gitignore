@@ -2,3 +2,5 @@
 /reference
 /tx-fuzz
 Cargo.lock
+reports/
+logs/
