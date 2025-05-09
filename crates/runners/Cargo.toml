@@ -9,6 +9,8 @@ rand = { workspace = true }
 tokio = { workspace = true }
 alloy = { workspace = true }
 alloy-rlp = { workspace = true }
+hex = { workspace = true }
+chrono = { workspace = true }
 
 common = { path = "../common" }
 mutator = { path = "../mutator" }

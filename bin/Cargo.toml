@@ -3,6 +3,7 @@ name = "rakoon"
 version = "0.1.0"
 edition = "2024"
 rust-version = "1.85"
+
 [[bin]]
 name = "rakoon"
 path = "cli/main.rs"
@@ -17,3 +18,4 @@ alloy = { workspace = true }
 app = { path = "../crates/app" }
 common = { path = "../crates/common" }
 runners = { path = "../crates/runners" }
+

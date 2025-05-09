@@ -1,9 +1,11 @@
+use std::{fs::OpenOptions, io::Write};
+
 use alloy::{
     consensus::BlobTransactionSidecar,
     eips::{eip4844::BYTES_PER_BLOB, eip7702::SignedAuthorization},
     primitives::{Address, Bytes, FixedBytes, TxKind, U256},
     providers::Provider,
-    rpc::types::{AccessList, AccessListItem, Authorization, TransactionInput},
+    rpc::types::{AccessList, AccessListItem, Authorization, TransactionInput}, transports::{RpcError, TransportErrorKind},
 };
 use common::{
     constants::{
@@ -15,8 +17,13 @@ use common::{
 };
 use rand::{Rng, RngCore, random_bool, rngs::StdRng};
 
+use crate::logger::Logger;
+
 pub trait Builder {
     fn provider(&self) -> &Backend;
+    fn is_running(&self) -> bool;
+    fn crash_counter(&self) -> u64;
+    fn logger(&mut self) -> &mut Logger;
 
     // ------------------------------------------------------------
 
@@ -360,5 +367,37 @@ pub trait Builder {
         let mut addr = [0u8; 20];
         random.fill(&mut addr);
         Address::from(addr)
+    }
+
+    // ------------------------------------------------------------
+
+    fn is_connection_refused_error(err: &RpcError<TransportErrorKind>) -> bool {
+        let formatted_err = format!("{:#?}", err);
+        formatted_err.contains("Connection refused")
+    }
+
+    async fn generate_crash_report(&mut self, tx_bytes: &[u8]) {
+        let report = format!(
+            "Transaction bytes (hex): 0x{}\n",
+            hex::encode(tx_bytes)
+        );
+        
+        match OpenOptions::new()
+            .create(true)
+            .write(true)
+            .open(format!("crash_report_legacy_{}.log", self.crash_counter())) 
+        {
+            Ok(mut file) => {
+                if let Err(e) = file.write_all(report.as_bytes()) {
+                    self.logger().log_error(&format!("Failed to write crash report to file: {}", e));
+                }
+                if let Err(e) = file.flush() {
+                    self.logger().log_error(&format!("Failed to flush crash report file: {}", e));
+                }
+            }
+            Err(e) => {
+                self.logger().log_error(&format!("Failed to open crash report file: {}", e));
+            }
+        }
     }
 }

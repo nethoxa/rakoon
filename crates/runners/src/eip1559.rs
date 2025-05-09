@@ -11,50 +11,84 @@ use alloy_rlp::Encodable;
 use common::types::Backend;
 use mutator::Mutator;
 use rand::{SeedableRng, random_bool, rngs::StdRng};
+use crate::logger::Logger;
 
-pub struct EIP1559TransactionRunner {
+pub struct Eip1559TransactionRunner {
     pub sk: SigningKey,
     pub seed: u64,
     pub provider: Backend,
     pub current_tx: Vec<u8>,
     pub mutator: Mutator,
+    pub crash_counter: u64,
+    pub running: bool,
+    pub logger: Logger,
 }
 
-impl Builder for EIP1559TransactionRunner {
+impl Builder for Eip1559TransactionRunner {
     fn provider(&self) -> &Backend {
         &self.provider
     }
+
+    fn is_running(&self) -> bool {
+        self.running
+    }
+
+    fn crash_counter(&self) -> u64 {
+        self.crash_counter
+    }
+    
+    fn logger(&mut self) -> &mut Logger {
+        &mut self.logger
+    }
 }
 
-impl EIP1559TransactionRunner {
+impl Eip1559TransactionRunner {
     pub fn new(rpc_url: Url, sk: SigningKey, seed: u64, max_operations_per_mutation: u64) -> Self {
         let provider = ProviderBuilder::new()
             .wallet::<PrivateKeySigner>(sk.clone().into())
             .connect_http(rpc_url);
 
         let mutator = Mutator::new(max_operations_per_mutation, seed);
+        let logger = Logger::new("eip1559").unwrap();
 
-        Self { sk, seed, current_tx: vec![], provider, mutator }
+        Self { sk, seed, current_tx: vec![], provider, mutator, crash_counter: 0, running: false, logger }
     }
 
     pub async fn run(&mut self) {
         let mut random = StdRng::seed_from_u64(self.seed);
         let sender = Address::from_private_key(&self.sk);
+        self.running = true;
 
         loop {
-            // 15% chance to re-generate the transaction
+            // 10% chance to re-generate the transaction
             if random_bool(0.1) || self.current_tx.is_empty() {
                 let (request, tx) = self.create_eip1559_transaction(&mut random, sender).await;
                 tx.encode(&mut self.current_tx);
 
-                let _ = self.provider.send_transaction_unsafe(request).await;
+                if let Err(err) = self.provider.send_transaction_unsafe(request).await {
+                    if Self::is_connection_refused_error(&err) {
+                        let current_tx = self.current_tx.clone();
+                        self.generate_crash_report(&current_tx).await;
+
+                        self.crash_counter += 1;
+                        self.running = false;
+
+                        break;
+                    }
+                }
             } else {
                 self.mutator.mutate(&mut self.current_tx);
-                let _: Result<TxHash, _> = self
-                    .provider
-                    .client()
-                    .request("eth_sendRawTransaction", &self.current_tx)
-                    .await;
+                if let Err(err) = self.provider.client().request::<_, TxHash>("eth_sendRawTransaction", &self.current_tx).await {
+                    if Self::is_connection_refused_error(&err) {
+                        let current_tx = self.current_tx.clone();
+                        self.generate_crash_report(&current_tx).await;
+
+                        self.crash_counter += 1;
+                        self.running = false;
+
+                        break;
+                    }
+                }
             }
         }
     }
@@ -115,7 +149,7 @@ impl EIP1559TransactionRunner {
 #[tokio::test]
 async fn test_eip1559_transaction_runner() {
     let mut rng = StdRng::seed_from_u64(1);
-    let runner = EIP1559TransactionRunner::new(
+    let runner = Eip1559TransactionRunner::new(
         "http://localhost:8545".parse::<Url>().unwrap(),
         SigningKey::from_slice(
             &alloy::hex::decode(

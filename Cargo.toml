@@ -27,3 +27,5 @@ alloy = { git = "https://github.com/nethoxa/unsafe-alloy.git", branch = "main" }
 rand = "0.9.0"
 clap = { version = "4.5.37", features = ["derive"] }
 alloy-rlp = "0.3.11"
+chrono = "0.4.41"
+hex = "0.4.3"

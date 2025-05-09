@@ -1,4 +1,4 @@
-use crate::builder::Builder;
+use crate::{builder::Builder, logger::Logger};
 use alloy::{
     consensus::{
         TxEip1559, TxEip2930, TxEip4844, TxEip4844WithSidecar, TxEip7702, TxLegacy,
@@ -20,11 +20,26 @@ pub struct RandomTransactionRunner {
     pub provider: Backend,
     pub current_tx: Vec<u8>,
     pub mutator: Mutator,
+    pub running: bool,
+    pub crash_counter: u64,
+    pub logger: Logger,
 }
 
 impl Builder for RandomTransactionRunner {
     fn provider(&self) -> &Backend {
         &self.provider
+    }
+
+    fn is_running(&self) -> bool {
+        self.running
+    }
+
+    fn crash_counter(&self) -> u64 {
+        self.crash_counter
+    }
+
+    fn logger(&mut self) -> &mut Logger {
+        &mut self.logger
     }
 }
 
@@ -35,28 +50,46 @@ impl RandomTransactionRunner {
             .connect_http(rpc_url);
 
         let mutator = Mutator::new(max_operations_per_mutation, seed);
+        let logger = Logger::new("random").unwrap();
 
-        Self { sk, seed, current_tx: vec![], provider, mutator }
+        Self { sk, seed, current_tx: vec![], provider, mutator, running: false, crash_counter: 0, logger }
     }
 
     pub async fn run(&mut self) {
         let mut random = StdRng::seed_from_u64(self.seed);
         let sender = Address::from_private_key(&self.sk);
+        self.running = true;
 
         loop {
             // 10% chance to re-generate the transaction
             if random_bool(0.1) || self.current_tx.is_empty() {
                 let (request, tx) = self.create_random_transaction(&mut random, sender).await;
-                self.current_tx = tx;
+                tx.encode(&mut self.current_tx);
 
-                let _ = self.provider.send_transaction_unsafe(request).await;
+                if let Err(err) = self.provider.send_transaction_unsafe(request).await {
+                    if Self::is_connection_refused_error(&err) {
+                        let current_tx = self.current_tx.clone();
+                        self.generate_crash_report(&current_tx).await;
+
+                        self.crash_counter += 1;
+                        self.running = false;
+
+                        break;
+                    }
+                }
             } else {
                 self.mutator.mutate(&mut self.current_tx);
-                let _: Result<TxHash, _> = self
-                    .provider
-                    .client()
-                    .request("eth_sendRawTransaction", &self.current_tx)
-                    .await;
+                if let Err(err) = self.provider.client().request::<_, TxHash>("eth_sendRawTransaction", &self.current_tx).await {
+                    if Self::is_connection_refused_error(&err) {
+                        let current_tx = self.current_tx.clone();
+                        self.generate_crash_report(&current_tx).await;
+
+                        self.crash_counter += 1;
+                        self.running = false;
+
+                        break;
+                    }
+                }
             }
         }
     }
